@@ -1361,22 +1361,24 @@ function worldLocate(){
  if(!navigator.geolocation){setWStatus('Tarayıcı konum desteklemiyor','bad');return;}
  navigator.geolocation.getCurrentPosition(p=>setWorldPoint(p.coords.latitude,p.coords.longitude),()=>setWStatus('Konum alınamadı (izin verilmedi)','bad'),{timeout:8000});
 }
+const OSM_CACHE=new Map();
 async function fetchOverpass(q){
  const eps=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
- let err=new Error('bağlantı yok');
- for(let k=0;k<eps.length;k++){
-  const ep=eps[k],host=ep.split('/')[2];
-  setWStatus(`OSM verisi indiriliyor… (${host}, ${k+1}/${eps.length})`,'warn');
-  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),70000);
+ const ctls=[];
+ const one=async ep=>{
+  const host=ep.split('/')[2],ctl=new AbortController();ctls.push(ctl);
+  const to=setTimeout(()=>ctl.abort(),30000);
   try{
    const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
    if(!r.ok)throw new Error(host+' HTTP '+r.status);
-   const j=await r.json();clearTimeout(to);
+   const j=await r.json();
    if(!j||!Array.isArray(j.elements))throw new Error(host+' geçersiz yanıt');
    return j;
-  }catch(e){clearTimeout(to);err=new Error(e.name==='AbortError'?host+' zaman aşımı (70 sn)':(e.message||String(e)));}
- }
- throw err;
+  }catch(e){throw new Error(e.name==='AbortError'?host+' zaman aşımı':(e.message||String(e)));}
+  finally{clearTimeout(to);}
+ };
+ try{const j=await Promise.any(eps.map(one));ctls.forEach(c=>{try{c.abort();}catch(e){}});return j;}
+ catch(e){throw new Error(e&&e.errors?e.errors.map(x=>x.message).join(' | '):String(e&&e.message||e));}
 }
 const tileXY=(lat,lon,z)=>{const n=Math.pow(2,z),r=lat*D2R;return[(lon+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n];};
 const tile2lon=(x,z)=>x/Math.pow(2,z)*360-180;
@@ -1384,8 +1386,8 @@ const tile2lat=(y,z)=>{const n=Math.PI-2*Math.PI*y/Math.pow(2,z);return R2D*Math
 /* Uydu/OSM karolarından zemin dokusu mozaiği (CORS yoksa karo atlanır, düz zemin kalır) */
 async function buildGroundTexture(lat0,lon0,R,mode){
  if(mode==='none')return null;
- const span=2*R*1.1;let z=19;
- for(;z>14;z--){const tm=40075016.686*Math.cos(lat0*D2R)/Math.pow(2,z);if(Math.ceil(span/tm)+1<=7)break;}
+ const span=2*R*1.1;let z=18;
+ for(;z>14;z--){const tm=40075016.686*Math.cos(lat0*D2R)/Math.pow(2,z);if(Math.ceil(span/tm)+1<=5)break;}
  const tm=40075016.686*Math.cos(lat0*D2R)/Math.pow(2,z),[cx,cy]=tileXY(lat0,lon0,z),half=R*1.05/tm;
  const x0=Math.floor(cx-half),x1=Math.floor(cx+half),y0=Math.floor(cy-half),y1=Math.floor(cy+half),nx=x1-x0+1,ny=y1-y0+1;
  const cv=document.createElement('canvas');cv.width=nx*256;cv.height=ny*256;const g=cv.getContext('2d');g.fillStyle='#3d6a33';g.fillRect(0,0,cv.width,cv.height);
@@ -1395,7 +1397,7 @@ async function buildGroundTexture(lat0,lon0,R,mode){
    const im=new Image();im.crossOrigin='anonymous';
    im.onload=()=>{try{g.drawImage(im,(tx-x0)*256,(ty-y0)*256,256,256);loaded++;}catch(e){}res();};
    im.onerror=()=>res();
-   setTimeout(res,15000);
+   setTimeout(res,8000);
    im.src=mode==='sat'?`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`:`https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`;
   }));
  }
@@ -1410,18 +1412,19 @@ async function loadRealWorld(){
  wBusy=true;const lat=WLD.lat,lon=WLD.lon,R=WLD.R,mode=WLD.tex;
  try{
   const kx=111320*Math.cos(lat*D2R),dla=R/110540,dlo=R/kx,bb=`${lat-dla},${lon-dlo},${lat+dla},${lon+dlo}`;
-  const q=`[out:json][timeout:25];(way["building"](${bb});node["natural"="tree"](${bb});way["natural"="wood"](${bb});way["landuse"="forest"](${bb});way["leisure"~"^(park|garden)$"](${bb}););out geom qt;`;
-  setWStatus('OSM verisi (Overpass) indiriliyor…','warn');
-  let j={elements:[]},osmFail=null;
-  try{j=await fetchOverpass(q);}catch(e){osmFail=e;}
-  setWStatus('Zemin dokusu indiriliyor…','warn');
-  const tex=await buildGroundTexture(lat,lon,R,mode);
+  const q=`[out:json][timeout:20];(way["building"](${bb});node["natural"="tree"](${bb});way["natural"="wood"](${bb});way["landuse"="forest"](${bb});way["leisure"~"^(park|garden)$"](${bb}););out geom qt;`;
+  setWStatus('OSM verisi ve zemin dokusu birlikte indiriliyor…','warn');
+  const ck=lat.toFixed(5)+','+lon.toFixed(5)+','+R,cached=OSM_CACHE.get(ck);
+  const pJ=(cached?Promise.resolve(cached):fetchOverpass(q).then(x=>{OSM_CACHE.set(ck,x);return x;})).then(x=>({j:x}),e=>({err:e}));
+  const pT=buildGroundTexture(lat,lon,R,mode).catch(()=>null);
+  const [ro,tex]=await Promise.all([pJ,pT]);
+  const j=ro.j||{elements:[]},osmFail=ro.err||null;
   setWStatus('3D model oluşturuluyor…','warn');
   const data=parseWorld(j,lat,lon,R);
   data.tex=tex;data.texInfo=tex?((mode==='sat'?'uydu':'OSM harita')+` (${tex.loaded}/${tex.total} karo)`):'düz çimen';
   WORLD=data;OBST=[];M.wps=[];M.target=null;
   applyWorldScene();resetSim();onMissionChange();
-  MV.map.fitWorld();MV.fitted=true;renderWorldInfo();
+  MV.fitted=false;renderWorldInfo();
   if(osmFail)setWStatus('Bina/ağaç verisi alınamadı ('+osmFail.message+'). Bölge yalnızca zemin dokusuyla yüklendi; yarıçapı küçültüp tekrar deneyebilirsiniz.','warn');
   else setWStatus(`Hazır: ${data.B.length} bina, ${data.T.length} ağaç. GÖREV sekmesinden rota planlayın, sonra UÇUŞ.`,'ok');
   log(`GERÇEK DÜNYA yüklendi: ${lat.toFixed(5)}, ${lon.toFixed(5)} — ${data.B.length} bina, ${data.T.length} ağaç`,'ok');
@@ -1431,7 +1434,7 @@ async function loadRealWorld(){
 function useDefaultWorld(){
  WORLD=null;OBST=DEF_OBST;
  if(WD.real)clearGroup(WD.real);if(WD.def)WD.def.visible=true;if(WD.ground)WD.ground.position.y=0;
- demoMission();resetSim();onMissionChange();MV.map.fit();renderWorldInfo();setWStatus('Varsayılan saha yüklendi','ok');
+ demoMission();resetSim();onMissionChange();MV.fitted=false;renderWorldInfo();setWStatus('Varsayılan saha yüklendi','ok');
 }
 /* Üstten görünen nesneleri 3D'ye kur: zemin dokusu, birleştirilmiş bina geometrisi, instanced ağaçlar */
 function applyWorldScene(){
@@ -1490,6 +1493,10 @@ class MapView{
   buildPath().forEach(p=>{xs.push(p.x);zs.push(p.z);});
   const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
   this.cx=(x0+x1)/2;this.cz=(z0+z1)/2;this.s=clamp(Math.min(this.W/(x1-x0+60),this.H/(z1-z0+60)),0.3,8);
+ }
+ fitWorld(){
+  this.resize();const R=WORLD?WORLD.R:300;this.cx=0;this.cz=0;
+  this.s=clamp(Math.min(this.W,this.H)/(2*R*1.1),0.3,12);
  }
  zoom(f,px,py){
   if(px==null){px=this.W/2;py=this.H/2;}const[wx,wz]=this.s2w(px,py);this.s=clamp(this.s*f,0.3,12);
