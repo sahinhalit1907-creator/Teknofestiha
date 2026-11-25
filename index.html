@@ -47,6 +47,7 @@ body.sticks.inflight #sticks{display:block}
 .stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(31,224,165,.55);border:2px solid var(--ok);pointer-events:none}
 #stickL{left:10px}#stickR{right:10px}
 body.sticks #quick{bottom:10px}
+#sndBtn{position:absolute;right:8px;top:96px;z-index:9;padding:6px 9px;font-size:14px}
 #vpHint{position:absolute;left:8px;bottom:8px;font-size:11px;color:var(--dim);z-index:3;pointer-events:none;max-width:60%}
 .card{background:var(--pan2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:8px}
 .card h3{margin:0 0 6px;font-size:11px;letter-spacing:.1em;color:var(--acc);text-transform:uppercase}
@@ -152,6 +153,7 @@ input[type=text]{background:#0b121a;border:1px solid var(--line);border-radius:6
       <button class="btn" data-act="reset">RESET</button>
     </div>
     <div id="sticks"><div class="stick" id="stickL"><i></i></div><div class="stick" id="stickR"><i></i></div></div>
+    <button class="btn" id="sndBtn" data-act="sound" title="Ses">🔊</button>
     <div id="vpHint"></div>
   </section>
   <aside id="panel">
@@ -292,8 +294,8 @@ const fmtT=t=>{t=Math.max(0,t|0);return String((t/60)|0).padStart(2,'0')+':'+Str
 /* ============ 2. DONANIM VERİTABANI ============ */
 const FRAMES={
  xquad:{name:'X-Quad',desc:'Kompakt ve çevik; merkezi yük, nötr ağırlık merkezi.',mass:420,nLift:4,pusher:false,cdA:0.055,inertia:1.0,wing:null,battZ:0,payZ:0,maxTilt:30},
- hframe:{name:'H-Frame',desc:'Uzun gövde; batarya arkada, yük bölmesi önde. Daha ağır ve ataletli.',mass:560,nLift:4,pusher:false,cdA:0.066,inertia:1.2,wing:null,battZ:0.06,payZ:-0.07,maxTilt:28},
- hybrid:{name:'Hibrit VTOL',desc:'Kanatlı gövde + 4 kaldırma motoru + itici motor. Düşük sürükleme, uzun menzil.',mass:1150,nLift:4,pusher:true,cdA:0.028,inertia:1.65,wing:{S:0.42,CL:0.75},battZ:-0.10,payZ:0.02,maxTilt:24}
+ hframe:{name:'H-Frame',desc:'Uzun gövde; batarya arkada, yük bölmesi önde. Daha ağır ve ataletli.',mass:560,nLift:4,pusher:false,cdA:0.066,inertia:1.2,wing:null,battZ:0,payZ:0,maxTilt:28},
+ hybrid:{name:'Hibrit VTOL',desc:'Kanatlı gövde + 4 kaldırma motoru + itici motor. Düşük sürükleme, uzun menzil.',mass:1150,nLift:4,pusher:true,cdA:0.028,inertia:1.65,wing:{S:0.42,CL:0.75},battZ:0,payZ:0,maxTilt:24}
 };
 const MOTORS={
  x2212:{name:'Sunnysky X2212 980KV',kv:980,mass:52,maxA:20,d:28},
@@ -375,11 +377,12 @@ function motorModel(m,p,V,iLim){
  if(Ineed>iLim){P=V*iLim;T=Tfull*Math.pow(P*0.85/Psh,2/3);I=iLim;}
  return{T:T*0.92,I,P,Ineed,Tfull,tip:Math.PI*D*rpm/60,rpm};
 }
-function layoutFor(fk,Dm){
+function layoutFor(fk,Dm,c){
  const L={motors:[],pusher:null,R:0};
  if(fk==='xquad'){const R=Math.max(0.17,0.82*Dm+0.02),s=R/Math.SQRT2;
   L.motors=[{x:-s,z:-s,dir:1,front:true},{x:s,z:-s,dir:-1,front:true},{x:s,z:s,dir:1},{x:-s,z:s,dir:-1}];L.R=R;}
- else if(fk==='hframe'){const w=0.62*Dm+0.05,l=0.95*Dm+0.07;
+ else if(fk==='hframe'){const mn=(1.08*Dm+0.02)/2;let w=0.72*Dm+0.06,l=0.8*Dm+0.07;
+  if(c&&c.hfW>0)w=Math.max(c.hfW/2000,mn);if(c&&c.hfL>0)l=Math.max(c.hfL/2000,mn);
   L.motors=[{x:-w,z:-l,dir:1,front:true},{x:w,z:-l,dir:-1,front:true},{x:w,z:l,dir:1},{x:-w,z:l,dir:-1}];L.R=Math.hypot(w,l);L.w=w;L.l=l;}
  else{const bx=Math.max(0.34,0.5*Dm+0.26),bl=0.62*Dm+0.06;
   L.motors=[{x:-bx,z:-bl,dir:1,front:true},{x:bx,z:-bl,dir:-1,front:true},{x:bx,z:bl,dir:1},{x:-bx,z:bl,dir:-1}];
@@ -406,7 +409,7 @@ function payCdA(){return 0.006+0.000012*cfg.payG;}
 function computeSpecs(c,payLeft){
  const fr=FRAMES[c.frame],mo=MOTORS[c.motor],pr=PROPS[c.prop],es=ESCS[c.esc],fc=FCS[c.fc],gp=GPSS[c.gps],ba=BATS[c.bat];
  const nL=fr.nLift,nM=nL+(fr.pusher?1:0),pl=payLeft==null?c.payN:payLeft;
- const Dm=pr.D*0.0254,L=layoutFor(c.frame,Dm);
+ const Dm=pr.D*0.0254,L=layoutFor(c.frame,Dm,c);
  const Vnom=ba.cells*3.7,battA=ba.cap/1000*ba.C;
  const full=motorModel(mo,pr,Vnom,1e9);
  const iLim=Math.min(mo.maxA,es.rating*0.92,battA/nM);
@@ -415,12 +418,14 @@ function computeSpecs(c,payLeft){
  const parts=[['Gövde',fr.mass],['Motorlar',nM*mo.mass],['Pervaneler',nM*pr.mass],['ESC',nM*es.mass],['Uçuş kont.',fc.mass],['GPS/Pusula',gp.mass],['Batarya',ba.mass],['Servo+mekanizma',mech],['Kablo/PDB',70+8*nM],['Yük',pl*c.payG]];
  const mass=parts.reduce((s,p)=>s+p[1],0);
  const pushM=fr.pusher?(mo.mass+pr.mass+es.mass):0;
- const mz=pushM*(fr.pusher?L.pusher.z:0)+ba.mass*fr.battZ+(pl*c.payG+mech)*fr.payZ;
+ const mP=pushM*(fr.pusher?L.pusher.z:0)+(pl*c.payG+mech)*fr.payZ;
+ const battZ=ba.mass>0?clamp(-mP/ba.mass,-0.3,0.3):0; /* pil, ağırlık merkezini ortalar */
+ const mz=mP+ba.mass*battZ;
  const cgZ=mz/mass,cgRatio=Math.abs(cgZ)/L.R,cgLoss=clamp(cgRatio*1.2,0,0.3);
  const Tlift=nL*mm.T*(1-cgLoss),twr=Tlift/(mass/1000*G);
  const sp={fr,mo,pr,es,fc,gp,ba,nL,nM,L,R:L.R,Dm,parts,mass,massKg:mass/1000,Vnom,battA,mm,full,Tm:mm.T,Pm:mm.P,Tlift,twr,cgZ,cgRatio,cgLoss,
   avion:fc.power+gp.power+2,Wh:Vnom*ba.cap/1000,payLeft:pl,maxTilt:fr.maxTilt*D2R,
-  tau:clamp(0.085*Math.sqrt(mass/2500)*fr.inertia*(1+3*cgRatio)/fc.resp,0.05,0.7)};
+  battZ,tau:clamp(0.085*Math.sqrt(mass/2500)*fr.inertia*(1+3*cgRatio)/fc.resp,0.05,0.7)};
  sp.hoverP=powerAt(sp,sp.massKg,0,1);sp.cruiseP=powerAt(sp,sp.massKg,10,1);
  const Eu=sp.Wh*0.85;
  sp.hoverMin=twr>1?Eu/sp.hoverP*60:0;sp.cruiseMin=twr>1?Eu/sp.cruiseP*60:0;
@@ -644,15 +649,15 @@ function arm(){
  if(S.armed)return;
  if(S.crashed){log('Önce RESET (R) gerekli','warn');return;}
  if(SP.errors.length){log('ARM engellendi: '+SP.errors[0].m,'bad');return;}
- S.armed=true;S.state='ARMED';log('ARMED — motorlar rölantide','ok');
+ S.armed=true;S.state='ARMED';SND.ev('arm');log('ARMED — motorlar rölantide','ok');
  if(SP.twr<1)log('UYARI: TWR<1.0, kalkış mümkün değil','bad');
  else if(SP.twr<1.3)log('UYARI: TWR<1.3, kalkışta zorlanma olacak','warn');
 }
 function disarm(){
- if(!S.armed)return;S.armed=false;S.state='DISARMED';S.mode='MANUAL';S.drop=null;S.hold.set=false;
+ if(!S.armed)return;S.armed=false;S.state='DISARMED';SND.ev('disarm');S.mode='MANUAL';S.drop=null;S.hold.set=false;
  log(S.onGround?'DISARMED':'MOTOR KILL — havada devre dışı!',S.onGround?'info':'bad');
 }
-function crash(msg){S.crashed=true;S.armed=false;S.state='DISARMED';S.mode='MANUAL';S.vel.x=S.vel.y=S.vel.z=0;S.drop=null;log('ÇARPMA: '+msg+' — RESET ile sıfırlayın','bad');}
+function crash(msg){SND.ev('crash');S.crashed=true;S.armed=false;S.state='DISARMED';S.mode='MANUAL';S.vel.x=S.vel.y=S.vel.z=0;S.drop=null;log('ÇARPMA: '+msg+' — RESET ile sıfırlayın','bad');}
 function toggleMode(){
  if(S.mode==='MANUAL')startAuto();
  else{S.mode='MANUAL';S.state=S.armed?'ARMED':'DISARMED';S.hold.set=false;S.drop=null;log('MANUEL moda geçildi','info');}
@@ -683,7 +688,7 @@ function cmdLand(){
  S.mode='AUTO';S.circ=null;S.spl=null;goLand(S.est.x,S.est.z,false);log('LAND: bulunulan konuma iniş','warn');
 }
 function advance(){
- S.wpIdx++;S.loiterT=null;S.state='WAYPOINT_NAV';S.circ=null;S.spl=null;S.actHold=null;S.takeoffT=0;
+ SND.ev('wp');S.wpIdx++;S.loiterT=null;S.state='WAYPOINT_NAV';S.circ=null;S.spl=null;S.actHold=null;S.takeoffT=0;
  if(S.wpIdx>=M.wps.length){log('Son waypoint tamamlandı → RTL','info');startRTL();}
  else log(`Aktif WP${S.wpIdx+1}: ${M.wps[S.wpIdx].action}`,'info');
 }
@@ -817,14 +822,14 @@ function spawnBody(q){
  if(S.payLeft<=0)return;
  const idx=cfg.payN-S.payLeft;S.payLeft--;SP=computeSpecs(cfg,S.payLeft);
  const b={x:S.pos.x,y:S.pos.y+0.07,z:S.pos.z,vx:S.vel.x,vy:S.vel.y,vz:S.vel.z,m:cfg.payG/1000,cdA:payCdA(),done:false,idx,auto:q.auto,t0:S.t};
- bodies.push(b);
+ bodies.push(b);SND.ev('release');
  log(`YÜK BIRAKILDI #${idx+1} (${q.auto?'otonom':'manuel'}) — ${f1(S.pos.y,0)} m, ${f1(Math.hypot(S.vel.x,S.vel.z))} m/s`,'ok');
  if(hooks.onRelease)hooks.onRelease(b);
 }
 function hitText(d){return d<=1?'TAM İSABET':(d<=3?'İSABETLİ':(d<=6?'YAKIN':'KAÇTI'));}
 function onImpact(b){
  const d=M.target?Math.hypot(b.x-M.target.x,b.z-M.target.z):null;
- const imp={x:b.x,z:b.z,d,auto:b.auto,idx:b.idx,t:S.t};impacts.push(imp);
+ const imp={x:b.x,z:b.z,d,auto:b.auto,idx:b.idx,t:S.t};impacts.push(imp);SND.ev(d!=null&&d<=3?'hit':'thud');
  if(d!=null){S.results.push({d,auto:b.auto});S.lastHit=d;log(`YÜK #${b.idx+1} YERE İNDİ — hedefe ${f1(d,1)} m: ${hitText(d)}`,d<=3?'ok':'warn');}
  else log(`YÜK #${b.idx+1} YERE İNDİ — hedef işaretli değil`,'info');
  if(hooks.onImpact)hooks.onImpact(imp);
@@ -910,10 +915,10 @@ function battery(dt){
 }
 function failsafes(){
  if(!S.armed||S.onGround)return;
- if(S.pct<=22&&!S.fs1){S.fs1=true;
+ if(S.pct<=22&&!S.fs1){S.fs1=true;SND.ev('alarm');
   if(SP.fc.failsafe&&S.gpsOK&&S.state!=='RTL'&&S.state!=='LAND'){log('FAILSAFE: batarya %22 → RTL','bad');S.mode='AUTO';startRTL();}
   else log('UYARI: batarya %22!','bad');}
- if(S.pct<=10&&!S.fs2){S.fs2=true;
+ if(S.pct<=10&&!S.fs2){S.fs2=true;SND.ev('alarm');
   if(SP.fc.failsafe&&S.state!=='LAND'){log('FAILSAFE: batarya kritik → LAND','bad');S.mode='AUTO';goLand(S.est.x,S.est.z,false);}
   else log('KRİTİK BATARYA!','bad');}
 }
@@ -1072,7 +1077,7 @@ function mkCapsule(r,len){
  return g;
 }
 function initMaterials(){
- MAT={carbon:mkMat(0x1b2027,.55,.35),armF:mkMat(0xd62839,.5,.2),armB:mkMat(0x2c343e,.55,.3),motor:mkMat(0x3a4551,.35,.7),alu:mkMat(0xaab4c0,.35,.8),
+ MAT={wood:mkMat(0xc9a066,.85,0),yellow:mkMat(0xe8c30a,.5,.1),rx:mkMat(0x2f8f4f,.5,.2),servoB:mkMat(0x2a5db0,.5,.2),propG:mkMat(0x9aa3ad,.4,.1,{transparent:true,opacity:.8}),carbon:mkMat(0x1b2027,.55,.35),armF:mkMat(0xd62839,.5,.2),armB:mkMat(0x2c343e,.55,.3),motor:mkMat(0x3a4551,.35,.7),alu:mkMat(0xaab4c0,.35,.8),
   batt:mkMat(0x2467d6,.5,.1),white:mkMat(0xe9eef3,.5,.1),esc:mkMat(0x0f1a14,.6,.2),fc:mkMat(0x0e1a2b,.5,.3),pay:mkMat(0xf5a524,.45,.15),hook:mkMat(0xff4d5e,.4,.3),
   puck:mkMat(0x20262d,.5,.3),propF:mkMat(0xff6b6b,.5,.1),propB:mkMat(0xe8eef5,.5,.1),gear:mkMat(0x2a313a,.6,.3),servo:mkMat(0x15191f,.6,.2),horn:mkMat(0xffb020,.4,.3),
   led:new THREE.MeshBasicMaterial({color:0x1fe0a5}),cg:new THREE.MeshBasicMaterial({color:0xff2ad4}),
@@ -1081,7 +1086,7 @@ function initMaterials(){
 /* Parça parça 3D drone: seçime göre geometri değişir */
 function buildDrone(c,sp){
  const fr=FRAMES[c.frame],mo=MOTORS[c.motor],pr=PROPS[c.prop],ba=BATS[c.bat],gp=GPSS[c.gps];
- const Dm=pr.D*0.0254,L=layoutFor(c.frame,Dm);
+ const Dm=pr.D*0.0254,L=layoutFor(c.frame,Dm,c);
  const g=new THREE.Group();g.rotation.order='YXZ';
  const out={group:g,props:[],pusher:null,horn:null,caps:[],hooks:[],L,cg:null};
  const add=(geo,mat,x,y,z,par)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,y,z);(par||g).add(o);return o;};
@@ -1093,7 +1098,8 @@ function buildDrone(c,sp){
   add(CY(rad,0.035,16),MAT.motor,0,0,0,mg);add(CY(rad*0.8,0.01,16),MAT.alu,0,0.022,0,mg);
   const pg=new THREE.Group();pg.position.y=0.036;mg.add(pg);
   const spin=new THREE.Group();pg.add(spin);
-  add(BX(Dm,0.004,Math.max(0.018,Dm*0.075)),m.front?MAT.propF:MAT.propB,0,0,0,spin);add(CY(0.012,0.012,10),MAT.alu,0,0.006,0,spin);
+  if(c.frame==='hframe'){for(let k=0;k<3;k++){const bg=new THREE.Group();bg.rotation.y=k*2.0944;spin.add(bg);add(BX(Dm/2,0.004,Math.max(0.016,Dm*0.07)),MAT.propG,Dm/4,0,0,bg);}}
+  else add(BX(Dm,0.004,Math.max(0.018,Dm*0.075)),m.front?MAT.propF:MAT.propB,0,0,0,spin);add(CY(0.012,0.012,10),MAT.alu,0,0.006,0,spin);
   const disc=new THREE.Mesh(new THREE.CircleGeometry(Dm/2,32),MAT.disc);disc.rotation.x=-Math.PI/2;disc.position.y=0.003;pg.add(disc);
   return{spin,dir:m.dir||1};
  };
@@ -1106,12 +1112,28 @@ function buildDrone(c,sp){
    out.props.push(mkMotor(m,false));});
   topY=0.056;
  }else if(c.frame==='hframe'){
-  add(BX(0.2,0.012,0.17),MAT.carbon,0,0,0);add(BX(0.18,0.012,0.15),MAT.carbon,0,0.05,0);
-  add(BX(2*L.w,0.016,0.05),MAT.carbon,0,0,0);
-  [-1,1].forEach(s=>{add(BX(0.026,0.018,2*L.l),MAT.armB,s*L.w,0,0);add(BX(0.028,0.019,0.08),MAT.armF,s*L.w,0,-L.l+0.03);
-   [-1,1].forEach(q=>add(BX(0.02,0.008,0.045),MAT.esc,s*L.w,0.014,q*L.l*0.6));});
-  [[-.07,-.06],[.07,-.06],[.07,.06],[-.07,.06]].forEach(p=>add(CY(0.005,0.05,8),MAT.alu,p[0],0.025,p[1]));
-  L.motors.forEach(m=>out.props.push(mkMotor(m,false)));topY=0.056;
+  const w=L.w,l=L.l,sw=clamp(0.62*w,0.08,0.2),tr=0.011;
+  /* iki yan karbon boru (motorlar uçlarda) + sarı ısı daralan bantlar */
+  [-l,l].forEach(z=>{
+   const t=add(CY(tr,2*w+0.03,14),MAT.carbon,0,0,z);t.rotation.z=Math.PI/2;
+   [-0.55,-0.88,0.55,0.88].forEach(f=>{const bd=add(CY(tr+0.0015,0.02,14),MAT.yellow,f*w,0,z);bd.rotation.z=Math.PI/2;});
+   /* ortada yuvarlak karbon plaka + kırmızı baskı kelepçeler */
+   add(CY(0.075,0.006,32),MAT.carbon,0,0.014,z);add(CY(0.07,0.006,32),MAT.carbon,0,-0.014,z);
+   [-1,1].forEach(sg=>add(BX(0.03,0.034,0.04),MAT.armF,sg*0.1,0,z));
+   /* ESC'ler borunun üstünde */
+   [-1,1].forEach(sg=>add(BX(0.045,0.008,0.02),MAT.esc,sg*0.72*w,0.014,z));
+  });
+  /* motor tabanları */
+  L.motors.forEach(m=>add(BX(0.03,0.016,0.03),MAT.armB,m.x,0.004,m.z));
+  /* gövde: kırmızı 3B baskı tepsi + karbon üst plaka */
+  add(BX(sw,0.036,1.7*l+0.03),MAT.armF,0,0.012,-0.15*l);
+  add(BX(sw*0.97,0.006,1.32*l),MAT.carbon,0,0.033,-0.13*l);
+  add(BX(0.03,0.02,0.022),MAT.horn,0,0.04,-0.9*l);
+  /* arka: yeşil alıcı + siyah kapsül */
+  add(BX(0.04,0.008,0.085),MAT.rx,0,0.021,l+0.02);add(BX(0.028,0.0085,0.035),MAT.esc,0,0.021,l+0.03);
+  const pod=add(new THREE.SphereGeometry(0.03,16,12),MAT.esc,0,0.012,l+0.095);pod.scale.set(1.2,0.6,2.6);
+  [-1,1].forEach(sg=>{const an=add(BX(0.004,0.002,0.045),MAT.armF,sg*0.02,0.03,l+0.12);an.rotation.y=sg*0.5;});
+  L.motors.forEach(m=>out.props.push(mkMotor(m,false)));topY=0.036;
  }else{
   const fus=add(new THREE.CylinderGeometry(0.07,0.055,0.86,18),MAT.white,0,0,0.02);fus.rotation.x=-Math.PI/2;
   const nose=add(new THREE.SphereGeometry(0.07,16,12),MAT.white,0,0,-0.43);nose.scale.set(1,1,1.2);
@@ -1125,20 +1147,22 @@ function buildDrone(c,sp){
   out.pusher=mkMotor({x:0,z:L.pusher.z,dir:1},true);topY=0.075;
  }
  /* Batarya (kapasiteye göre boyut) */
+ const bz=sp&&sp.battZ!=null?sp.battZ:fr.battZ;
  const bl=0.09+ba.cap/1000*0.011,bw=0.04+0.002*ba.cells,bh=0.03+ba.cap/1000*0.004;
- add(BX(bw,bh,bl),MAT.batt,0,topY+bh/2,fr.battZ);add(BX(bw+0.002,bh*0.25,bl*0.5),MAT.white,0,topY+bh/2,fr.battZ);
+ add(BX(bw,bh,bl),MAT.batt,0,topY+bh/2,bz);add(BX(bw+0.002,bh*0.25,bl*0.5),MAT.white,0,topY+bh/2,bz);
  /* FC */
  if(c.frame==='hybrid'){add(BX(0.045,0.01,0.045),MAT.fc,0,topY+0.005,0.22);add(CY(0.004,0.04,6),MAT.led,0.015,topY+0.012,0.22);}
  else{add(BX(0.045,0.012,0.045),MAT.fc,0,0.027,-0.03);add(CY(0.004,0.03,6),MAT.led,0.016,0.04,-0.03);}
  /* GPS direği + puck */
  if(c.gps!=='none'){
-  const gz=c.frame==='hybrid'?0.34:0.1,big=c.gps==='here3'?1.2:1,gy=topY+0.11;
+  const gz=c.frame==='hybrid'?0.34:(c.frame==='hframe'?-(L.l+0.07):0.1),big=c.gps==='here3'?1.2:1,gy=topY+0.11;
   add(CY(0.004,0.11,8),MAT.alu,0,topY+0.055,gz);add(CY(0.03*big,0.012,20),MAT.puck,0,gy,gz);add(CY(0.026*big,0.004,20),c.gps==='here3'?MAT.horn:MAT.led,0,gy+0.008,gz);
  }
  /* İniş takımı */
  const lx=c.frame==='hybrid'?0.09:0.075,lz=c.frame==='hybrid'?0.15:0.085;
- [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(q=>add(CY(0.004,0.17,8),MAT.gear,q[0]*lx,-0.085,q[1]*lz));
- [-1,1].forEach(s=>{const sk=add(CY(0.005,c.frame==='hybrid'?0.42:0.3,8),MAT.gear,s*lx,-0.17,0);sk.rotation.x=Math.PI/2;});
+ if(c.frame==='hframe')L.motors.forEach(m=>add(CY(0.012,0.2,10),MAT.carbon,m.x,-0.07,m.z));
+ else{[[-1,-1],[1,-1],[1,1],[-1,1]].forEach(q=>add(CY(0.004,0.17,8),MAT.gear,q[0]*lx,-0.085,q[1]*lz));
+ [-1,1].forEach(s=>{const sk=add(CY(0.005,c.frame==='hybrid'?0.42:0.3,8),MAT.gear,s*lx,-0.17,0);sk.rotation.x=Math.PI/2;});}
  /* Yük bırakma mekanizması: servo + horn + kancalar + kapsüller */
  const pz=fr.payZ;
  add(BX(0.05,0.03,0.03),MAT.servo,0,-0.04,pz);
@@ -1148,6 +1172,13 @@ function buildDrone(c,sp){
   const zi=pz+(i-(c.payN-1)/2)*sp_;
   const cap=mkCapsule(cd.r,cd.len);cap.position.set(0,-0.085,zi);g.add(cap);out.caps.push(cap);
   const hk=new THREE.Group();hk.position.set(-cd.r*0.8,-0.085-cd.r-0.003,zi);g.add(hk);add(BX(cd.r*1.6,0.006,0.02),MAT.hook,cd.r*0.8,0,0,hk);out.hooks.push(hk);
+ }
+ if(c.frame==='hframe'&&c.payN>0){
+  const tot=c.payN*sp_,hx=cd.r+0.014;
+  [-1,1].forEach(sg=>add(BX(0.006,0.06,tot+0.02),MAT.wood,sg*hx,-0.048,pz));
+  [-1,1].forEach(sg=>add(BX(2*hx+0.006,0.06,0.006),MAT.wood,0,-0.048,pz+sg*(tot/2+0.01)));
+  add(BX(2*hx+0.006,0.006,tot+0.026),MAT.wood,0,-0.018,pz);
+  [-1,1].forEach(sg=>add(BX(0.022,0.03,0.014),MAT.servoB,sg*(hx+0.016),-0.04,pz));
  }
  /* Ağırlık merkezi işareti */
  const cgm=new THREE.Mesh(new THREE.SphereGeometry(0.018,12,10),MAT.cg);cgm.position.set(0,0.0,sp?sp.cgZ:0);cgm.renderOrder=5;g.add(cgm);out.cg=cgm;
@@ -1624,6 +1655,11 @@ const SELS=[
 function buildHangarUI(){
  let h=`<div class="card"><h3>Hazır konfigürasyon</h3><div class="row">`+Object.keys(PRESETS).map(k=>`<button class="btn" data-pre="${k}">${PRESETS[k].label}</button>`).join('')+`</div></div>`;
  h+=`<div class="card"><h3>Gövde (Frame)</h3><div class="seg">`+Object.keys(FRAMES).map(k=>`<button data-frame="${k}">${FRAMES[k].name}</button>`).join('')+`</div><div class="info" id="info_frame"></div></div>`;
+ h+=`<div class="card" id="hfCard"><h3>H-Frame ölçüleri</h3>
+  <div class="sl"><label>Gövde uzunluğu</label><input type="range" data-hf="hfL" min="200" max="1000" step="5"><b id="v_hfL"></b></div>
+  <div class="sl"><label>Kol uzunluğu</label><input type="range" data-hf="hfW" min="200" max="900" step="5"><b id="v_hfW"></b></div>
+  <div class="info">Gövde uzunluğu: ön ve arka kol (boru) arası. Kol uzunluğu: aynı koldaki iki motor arası (merkezden merkeze). Pervaneler çarpışmasın diye alt sınır otomatik uygulanır.</div>
+  <button class="btn" id="hfAutoBtn" data-act="hfauto" style="margin-top:6px">Otomatik oran</button></div>`;
  SELS.forEach(s=>{h+=`<div class="card"><h3>${s.label}</h3><select data-sel="${s.k}">`+Object.keys(s.tbl).map(k=>`<option value="${k}">${s.tbl[k].name}</option>`).join('')+`</select><div class="info" id="info_${s.k}"></div></div>`;});
  h+=`<div class="card"><h3>Yük bırakma mekanizması + servo</h3><div class="grid2"><div><div class="info">Yük sayısı</div><select data-pay="payN">${[0,1,2,3].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
   <div><div class="info">Birim yük</div><select data-pay="payG">${[100,250,500,1000].map(n=>`<option value="${n}">${n} g</option>`).join('')}</select></div></div>
@@ -1635,6 +1671,14 @@ function syncHangarUI(){
  setTxt('info_frame',FRAMES[cfg.frame].desc);
  SELS.forEach(s=>{const el=document.querySelector(`[data-sel="${s.k}"]`);if(el)el.value=cfg[s.k];setTxt('info_'+s.k,s.info(s.tbl[cfg[s.k]]));});
  document.querySelectorAll('[data-pay]').forEach(el=>{el.value=String(cfg[el.dataset.pay]);});
+ const hc=$('hfCard');
+ if(hc){
+  hc.style.display=cfg.frame==='hframe'?'block':'none';
+  const HL=layoutFor('hframe',PROPS[cfg.prop].D*0.0254,cfg);
+  [['hfL',2*HL.l],['hfW',2*HL.w]].forEach(a=>{const el=document.querySelector(`[data-hf="${a[0]}"]`),mm=Math.round(a[1]*1000);
+   if(el&&document.activeElement!==el)el.value=mm;setTxt('v_'+a[0],mm+' mm');});
+  const ab=$('hfAutoBtn');if(ab)ab.classList.toggle('on',!(cfg.hfL>0)&&!(cfg.hfW>0));
+ }
 }
 function renderSpec(){
  const sp=computeSpecs(cfg),tw=sp.twr,cls=tw<1?'bad':(tw<1.3?'warn':'ok'),maxP=Math.max(...sp.parts.map(p=>p[1]),1);
@@ -1758,15 +1802,17 @@ const ACT={
  arm:()=>S.armed?disarm():arm(),mode:toggleMode,start:startAuto,rtl:cmdRTL,land:cmdLand,
  drop:()=>{if(releasePayload(false))log('MANUEL BIRAKMA tetiklendi','warn');},
  reset:()=>{resetSim();log('Simülasyon sıfırlandı','info');},cam:cycleCam,sticks:toggleSticks,loiter:toggleLoiter,
- motortest:()=>{motorTest=!motorTest;},servotest:()=>{hangarServoCmd=hangarServoCmd>0?0:90;},
+ motortest:()=>{motorTest=!motorTest;},servotest:()=>{hangarServoCmd=hangarServoCmd>0?0:90;SND.ev('servo');},
  togglecg:b=>{showCG=!showCG;if(b&&b.classList)b.classList.toggle('on',showCG);},
  zoomin:()=>MV.map.zoom(1.3),zoomout:()=>MV.map.zoom(1/1.3),fitmap:()=>MV.map.fit(),
  wload:loadRealWorld,wdefault:useDefaultWorld,wsearch:worldSearch,locate:worldLocate,gomission:()=>setTab('mission'),
  takeoff:cmdTakeoff,circle:cmdCircle,
- servo0:()=>{S.servoCmd=0;S.servoT=0;log('SERVO → 0°','info');},servo45:()=>{S.servoCmd=45;S.servoT=0;log('SERVO → 45°','info');},
+ servo0:()=>{SND.ev('servo');S.servoCmd=0;S.servoT=0;log('SERVO → 0°','info');},servo45:()=>{SND.ev('servo');S.servoCmd=45;S.servoT=0;log('SERVO → 45°','info');},
  servo90:()=>{if(S.armed&&S.payLeft-S.relQ.length>0)releasePayload(false);else{S.servoCmd=90;S.servoT=1.3;}log('SERVO → 90°','warn');},
  clearwp:()=>{M.wps=[];onMissionChange();},demo:()=>{demoMission();onMissionChange();MV.map.fit();},cleartarget:()=>{M.target=null;onMissionChange();},
- gofly:()=>setTab('flight')
+ gofly:()=>setTab('flight'),
+ hfauto:()=>{cfg.hfL=null;cfg.hfW=null;onCfgChange();},
+ sound:()=>{SND.init();SND.setOn(!SND.on);}
 };
 function setTab(t){
  tab=t;document.body.classList.toggle('inflight',t==='flight');
@@ -1794,7 +1840,7 @@ function bindUI(){
   const mp=e.target.closest('[data-map]');if(mp){mapMode=mp.dataset.map;document.querySelectorAll('[data-map]').forEach(b=>b.classList.toggle('on',b===mp));return;}
   const cm=e.target.closest('[data-cam]');if(cm){setCam(cm.dataset.cam);return;}
   const fr=e.target.closest('[data-frame]');if(fr){cfg.frame=fr.dataset.frame;onCfgChange();return;}
-  const pr=e.target.closest('[data-pre]');if(pr){Object.assign(cfg,PRESETS[pr.dataset.pre].cfg);onCfgChange();return;}
+  const pr=e.target.closest('[data-pre]');if(pr){Object.assign(cfg,PRESETS[pr.dataset.pre].cfg);cfg.hfL=null;cfg.hfW=null;onCfgChange();return;}
   const dl=e.target.closest('[data-del]');if(dl){delWp(+dl.dataset.del);return;}
   const wq=e.target.closest('[data-wq]');if(wq){const p=wq.dataset.wq.split(',').map(Number);setWorldPoint(p[0],p[1]);return;}
   const wl=e.target.closest('[data-wl]');if(wl&&LM&&LLayers[wl.dataset.wl]){Object.keys(LLayers).forEach(k=>LM.removeLayer(LLayers[k]));LLayers[wl.dataset.wl].addTo(LM);document.querySelectorAll('[data-wl]').forEach(b=>b.classList.toggle('on',b===wl));return;}
@@ -1808,7 +1854,8 @@ function bindUI(){
    if(t.dataset.wk==='action'){w.action=t.value;wpDefaults(w);}else w[t.dataset.wk]=clamp(+t.value||+t.min||0,+t.min||0,+t.max||120);onMissionChange();}
  });
  document.addEventListener('input',e=>{
-  const t=e.target;if(!t.dataset||!t.dataset.p)return;
+  const t=e.target;if(t.dataset&&t.dataset.hf){cfg[t.dataset.hf]=+t.value;onCfgChange();return;}
+  if(!t.dataset||!t.dataset.p)return;
   P[t.dataset.p]=+t.value;syncParams();
   if(t.dataset.p==='windSpd'||t.dataset.p==='windDir'||t.dataset.p==='dropV'||t.dataset.p==='rtlAlt'||t.dataset.p==='toAlt'){renderMissionInfo();rebuildMissionGfx();}
   saveState();
@@ -1848,11 +1895,88 @@ function loadState(){
   const j=JSON.parse(localStorage.getItem('skyforge_v1')||'null');if(!j)return false;
   const c=j.cfg;
   if(c&&FRAMES[c.frame]&&MOTORS[c.motor]&&PROPS[c.prop]&&ESCS[c.esc]&&FCS[c.fc]&&GPSS[c.gps]&&BATS[c.bat]&&c.payN>=0&&c.payN<=3&&[100,250,500,1000].includes(c.payG))Object.assign(cfg,c);
+  ['hfL','hfW'].forEach(k=>{if(!(cfg[k]>=200&&cfg[k]<=1000))cfg[k]=null;});
+  ['hfL','hfW'].forEach(k=>{if(!(cfg[k]>=200&&cfg[k]<=1000))cfg[k]=null;});
   if(j.P){['cruise','dropV','toAlt','rtlAlt','windSpd','windDir','circR'].forEach(k=>{if(typeof j.P[k]==='number')P[k]=j.P[k];});}
   if(j.M&&Array.isArray(j.M.wps)&&j.M.wps.every(w=>w&&typeof w.x==='number'&&typeof w.z==='number'&&ACTS.includes(w.action))){M.wps=j.M.wps;M.target=j.M.target||null;return true;}
  }catch(e){}
  return false;
 }
+
+/* ============ 8b. SES (Web Audio, harici dosya yok) ============ */
+const SND={
+ ctx:null,on:true,master:null,mg:null,m1:null,m2:null,mf:null,ng:null,wg:null,noiseBuf:null,lb:0,
+ init(){
+  if(this.ctx)return;
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  try{
+   const c=this.ctx=new AC();
+   this.master=c.createGain();this.master.gain.value=this.on?0.7:0;this.master.connect(c.destination);
+   const nb=this.noiseBuf=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);
+   for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+   /* motor: iki hafif ayrık testere dişi + alçak geçiren filtre */
+   this.mg=c.createGain();this.mg.gain.value=0;
+   this.mf=c.createBiquadFilter();this.mf.type='lowpass';this.mf.frequency.value=900;
+   this.m1=c.createOscillator();this.m1.type='sawtooth';this.m2=c.createOscillator();this.m2.type='sawtooth';
+   this.m1.connect(this.mf);this.m2.connect(this.mf);this.mf.connect(this.mg);this.mg.connect(this.master);
+   this.m1.start();this.m2.start();
+   /* pervane havası + rüzgar gürültüsü */
+   const mkN=(type,f,q)=>{const s=c.createBufferSource();s.buffer=nb;s.loop=true;const b=c.createBiquadFilter();b.type=type;b.frequency.value=f;b.Q.value=q;const g=c.createGain();g.gain.value=0;s.connect(b);b.connect(g);g.connect(this.master);s.start();return g;};
+   this.ng=mkN('bandpass',1400,0.7);this.wg=mkN('bandpass',450,0.5);
+  }catch(e){this.ctx=null;}
+ },
+ setOn(v){
+  this.on=!!v;if(this.master)this.master.gain.setTargetAtTime(this.on?0.7:0,this.ctx.currentTime,0.05);
+  const b=$('sndBtn');if(b)b.textContent=this.on?'🔊':'🔇';
+  try{localStorage.setItem('skyforge_snd',this.on?'1':'0');}catch(e){}
+ },
+ tone(f0,f1,dur,type,vol,delay){
+  const c=this.ctx;if(!c||!this.on||c.state!=='running')return;
+  const t=c.currentTime+(delay||0),o=c.createOscillator(),g=c.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(f0,t);if(f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(this.master);o.start(t);o.stop(t+dur+0.05);
+ },
+ burst(dur,fc,vol,delay){
+  const c=this.ctx;if(!c||!this.on||c.state!=='running')return;
+  const t=c.currentTime+(delay||0),s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();
+  s.buffer=this.noiseBuf;f.type='lowpass';f.frequency.setValueAtTime(fc,t);f.frequency.exponentialRampToValueAtTime(Math.max(60,fc*0.15),t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f);f.connect(g);g.connect(this.master);s.start(t,Math.random());s.stop(t+dur+0.05);
+ },
+ ev(n){
+  if(!this.ctx)return;
+  switch(n){
+   case 'arm':this.tone(660,660,.1,'square',.12);this.tone(880,880,.15,'square',.12,.13);break;
+   case 'disarm':this.tone(880,880,.1,'square',.12);this.tone(520,520,.18,'square',.12,.13);break;
+   case 'wp':this.tone(1250,1250,.09,'sine',.2);break;
+   case 'servo':this.tone(190,140,.07,'square',.1);this.burst(.05,3000,.12);break;
+   case 'release':this.tone(320,110,.2,'square',.15);this.burst(.12,2500,.25);break;
+   case 'thud':this.burst(.35,500,.5);this.tone(95,40,.3,'sine',.4);break;
+   case 'hit':this.burst(.3,500,.4);this.tone(95,40,.25,'sine',.35);this.tone(880,1320,.22,'sine',.2,.08);break;
+   case 'crash':this.burst(1.1,2200,.9);this.tone(130,30,.9,'sawtooth',.3);break;
+   case 'alarm':for(let i=0;i<3;i++)this.tone(1000,1000,.14,'square',.15,i*.22);break;
+  }
+ },
+ update(){
+  const c=this.ctx;if(!c||c.state!=='running'||!S)return;
+  const t=c.currentTime;let on=false,thr=0,air=0;
+  if(tab==='hangar'&&motorTest){on=true;thr=0.5;}
+  else if(tab==='flight'&&S.armed&&!S.crashed&&!S.battDead){on=true;thr=S.thrFrac;air=Math.hypot(S.vel.x-S.wind.x,S.vel.z-S.wind.z);}
+  const rs=Math.sqrt(clamp(thr,0,1)),base=clamp(SP.mm.rpm/60,60,320)*0.8,f=base*(0.35+0.65*rs);
+  this.m1.frequency.setTargetAtTime(f,t,0.05);this.m2.frequency.setTargetAtTime(f*1.013,t,0.05);
+  this.mf.frequency.setTargetAtTime(500+1500*rs,t,0.08);
+  this.mg.gain.setTargetAtTime(on?0.05+0.12*rs:0,t,0.08);
+  this.ng.gain.setTargetAtTime(on?0.02+0.12*rs:0,t,0.1);
+  this.wg.gain.setTargetAtTime(on?clamp(air/20,0,1)*0.18:0,t,0.15);
+  if(tab==='flight'&&S.armed&&!S.onGround&&!S.battDead&&S.pct<=22){
+   const iv=S.pct<=10?0.6:1.8;if(t-this.lb>iv){this.lb=t;this.tone(1500,1500,.09,'square',.1);}
+  }
+ }
+};
+try{SND.on=localStorage.getItem('skyforge_snd')!=='0';}catch(e){}
+['pointerdown','keydown','touchstart'].forEach(ev=>window.addEventListener(ev,()=>{SND.init();if(SND.ctx&&SND.ctx.state==='suspended'&&!document.hidden)SND.ctx.resume();},{passive:true}));
+document.addEventListener('visibilitychange',()=>{if(SND.ctx){if(document.hidden)SND.ctx.suspend();else SND.ctx.resume();}});
 
 /* ============ 9. ANA DÖNGÜ ============ */
 let lastT=0,acc=0,hudT=0;
@@ -1868,6 +1992,7 @@ function frame(now){
   else{syncWorld(dt);R3.render(WD.scene,WD.cam);}
  }
  if(tab==='flight'){MV.mini.draw();drawADI();}
+ SND.update();
  hudT+=dt;if(hudT>0.1){hudT=0;updateHUD();}
 }
 function boot(){
@@ -1880,7 +2005,7 @@ function boot(){
  }else $('noThree').style.display='grid';
  MV.map=new MapView($('map'),true,false);MV.mini=new MapView($('mini'),false,true);
  syncHangarUI();renderSpec();renderWpList();renderMissionInfo();
- setTab('hangar');requestAnimationFrame(frame);
+ setTab('hangar');SND.setOn(SND.on);requestAnimationFrame(frame);
 }
 boot();
 </script>
