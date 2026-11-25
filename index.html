@@ -1126,13 +1126,11 @@ function buildDrone(c,sp){
   /* motor tabanları */
   L.motors.forEach(m=>add(BX(0.03,0.016,0.03),MAT.armB,m.x,0.004,m.z));
   /* gövde: kırmızı 3B baskı tepsi + karbon üst plaka */
-  add(BX(sw,0.036,1.7*l+0.03),MAT.armF,0,0.012,-0.15*l);
-  add(BX(sw*0.97,0.006,1.32*l),MAT.carbon,0,0.033,-0.13*l);
-  add(BX(0.03,0.02,0.022),MAT.horn,0,0.04,-0.9*l);
-  /* arka: yeşil alıcı + siyah kapsül */
-  add(BX(0.04,0.008,0.085),MAT.rx,0,0.021,l+0.02);add(BX(0.028,0.0085,0.035),MAT.esc,0,0.021,l+0.03);
-  const pod=add(new THREE.SphereGeometry(0.03,16,12),MAT.esc,0,0.012,l+0.095);pod.scale.set(1.2,0.6,2.6);
-  [-1,1].forEach(sg=>{const an=add(BX(0.004,0.002,0.045),MAT.armF,sg*0.02,0.03,l+0.12);an.rotation.y=sg*0.5;});
+  add(BX(sw,0.036,1.7*l+0.03),MAT.armF,0,0.012,0.15*l);
+  add(BX(sw*0.97,0.006,1.32*l),MAT.carbon,0,0.033,0.13*l);
+  add(BX(0.03,0.02,0.022),MAT.horn,0,0.04,0.9*l);
+  /* ön (alıcı tarafı): yeşil alıcı */
+  add(BX(0.04,0.008,0.085),MAT.rx,0,0.021,-(l+0.02));add(BX(0.028,0.0085,0.035),MAT.esc,0,0.021,-(l+0.03));
   L.motors.forEach(m=>out.props.push(mkMotor(m,false)));topY=0.036;
  }else{
   const fus=add(new THREE.CylinderGeometry(0.07,0.055,0.86,18),MAT.white,0,0,0.02);fus.rotation.x=-Math.PI/2;
@@ -1155,7 +1153,7 @@ function buildDrone(c,sp){
  else{add(BX(0.045,0.012,0.045),MAT.fc,0,0.027,-0.03);add(CY(0.004,0.03,6),MAT.led,0.016,0.04,-0.03);}
  /* GPS direği + puck */
  if(c.gps!=='none'){
-  const gz=c.frame==='hybrid'?0.34:(c.frame==='hframe'?-(L.l+0.07):0.1),big=c.gps==='here3'?1.2:1,gy=topY+0.11;
+  const gz=c.frame==='hybrid'?0.34:(c.frame==='hframe'?(L.l+0.07):0.1),big=c.gps==='here3'?1.2:1,gy=topY+0.11;
   add(CY(0.004,0.11,8),MAT.alu,0,topY+0.055,gz);add(CY(0.03*big,0.012,20),MAT.puck,0,gy,gz);add(CY(0.026*big,0.004,20),c.gps==='here3'?MAT.horn:MAT.led,0,gy+0.008,gz);
  }
  /* İniş takımı */
