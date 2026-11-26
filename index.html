@@ -47,6 +47,15 @@ body.sticks.inflight #sticks{display:block}
 .stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(31,224,165,.55);border:2px solid var(--ok);pointer-events:none}
 #stickL{left:10px}#stickR{right:10px}
 body.sticks #quick{bottom:10px}
+#asmBar{position:absolute;left:8px;right:8px;bottom:8px;display:none;z-index:8;background:rgba(8,14,20,.86);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+#asmBar .t{font-size:12px;font-weight:700;color:var(--ok)}#asmBar .d{font-size:11px;color:var(--dim);margin:2px 0 6px}
+#asmBar .r{display:flex;gap:6px}#asmBar .btn{flex:1;padding:6px 4px}
+.optgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 8px}
+.opt{background:#0b121a;border:1px solid var(--line);border-radius:8px;padding:4px;text-align:left;cursor:pointer;color:var(--tx)}
+.opt.sel{border-color:var(--ok);background:#0e1f1d}.opt.cur{border:1px dashed var(--acc)}
+.opt b{display:block;font-size:11.5px;margin-top:3px;line-height:1.25}.opt span{display:block;font-size:10px;color:var(--dim);line-height:1.3}
+.th{width:100%;aspect-ratio:4/3;background:#0d1620 center/cover no-repeat;border-radius:6px;display:grid;place-items:center;font-size:26px;color:var(--dim)}
+.bom{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;margin:6px 0}.bom span{color:var(--dim)}
 #sndBtn{position:absolute;right:8px;top:96px;z-index:9;padding:6px 9px;font-size:14px}
 #vpHint{position:absolute;left:8px;bottom:8px;font-size:11px;color:var(--dim);z-index:3;pointer-events:none;max-width:60%}
 .card{background:var(--pan2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:8px}
@@ -54,7 +63,7 @@ body.sticks #quick{bottom:10px}
 .info{color:var(--dim);font-size:11px;margin-top:4px}
 select,input[type=number]{background:#0b121a;border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
 input[type=number]{width:64px;padding:3px 5px}
-.seg{display:flex;gap:4px}.seg button{flex:1;background:#0b121a;border:1px solid var(--line);border-radius:6px;padding:8px 4px;font-weight:700;cursor:pointer;font-size:12px}
+.seg{display:flex;gap:4px;flex-wrap:wrap}.seg button{flex:1;background:#0b121a;border:1px solid var(--line);border-radius:6px;padding:8px 4px;font-weight:700;cursor:pointer;font-size:12px}
 .seg button.on{border-color:var(--ok);color:var(--ok);background:#0e1f1d}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .kpis div{background:#0b121a;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
@@ -121,7 +130,7 @@ input[type=text]{background:#0b121a;border:1px solid var(--line);border-radius:6
     <div id="noLeaflet">Harita (Leaflet) yüklenemedi.<br>İnternet bağlantısını kontrol edip sayfayı yenileyin.</div>
     <div id="noThree">Three.js yüklenemedi.<br>İnternet bağlantısını kontrol edip sayfayı yenileyin (CDN: cdnjs.cloudflare.com).</div>
     <div class="vpbar" id="bar-hangar">
-      <button data-act="motortest">Motor testi</button><button data-act="servotest">Servo 0°/90°</button><button data-act="togglecg" class="on">CG</button>
+      <button data-act="motortest">Motor testi</button><button data-act="servotest">Servo 0°/90°</button><button data-act="togglecg" class="on">CG</button><button data-act="asm" id="asmBtn">🔧 Montaj</button>
     </div>
     <div class="vpbar" id="bar-world">
       <button data-wl="sat" class="on">Uydu</button><button data-wl="osm">Harita</button><button data-act="locate">📍 Konumum</button>
@@ -138,7 +147,7 @@ input[type=text]{background:#0b121a;border:1px solid var(--line);border-radius:6
       <div class="hc"><span>HIZ m/s</span><b id="h_spd">0.0</b></div>
       <div class="hc"><span>DİKEY m/s</span><b id="h_vs">0.0</b></div>
       <div class="hc"><span>BATARYA</span><b id="h_bat">100%</b></div>
-      <div class="hc"><span>TWR</span><b id="h_twr">0</b></div>
+      <div class="hc"><span id="h_twrL">TWR</span><b id="h_twr">0</b></div>
       <div class="hc"><span>KÜTLE g</span><b id="h_mass">0</b></div>
       <div class="hc"><span>SERVO</span><b id="h_servo">0°</b></div>
       <div class="hc"><span>WP / MESAFE</span><b id="h_wp">—</b></div>
@@ -153,11 +162,13 @@ input[type=text]{background:#0b121a;border:1px solid var(--line);border-radius:6
       <button class="btn" data-act="reset">RESET</button>
     </div>
     <div id="sticks"><div class="stick" id="stickL"><i></i></div><div class="stick" id="stickR"><i></i></div></div>
+    <div id="asmBar"></div>
     <button class="btn" id="sndBtn" data-act="sound" title="Ses">🔊</button>
     <div id="vpHint"></div>
   </section>
   <aside id="panel">
     <div class="pane on" id="pane-hangar">
+      <div class="card" id="asmCard" style="display:none"></div>
       <div class="card" id="specCard"></div>
       <div id="hangarUI"></div>
     </div>
@@ -233,7 +244,7 @@ input[type=text]{background:#0b121a;border:1px solid var(--line);border-radius:6
         <div class="tg">
           <div><span>İRTİFA</span><b id="t_alt">-</b></div><div><span>YATAY HIZ</span><b id="t_gs">-</b></div><div><span>DİKEY HIZ</span><b id="t_vs">-</b></div>
           <div><span>BATARYA</span><b id="t_bat">-</b></div><div><span>VOLTAJ</span><b id="t_volt">-</b></div><div><span>AKIM / GÜÇ</span><b id="t_pw">-</b></div>
-          <div><span>TWR (anlık)</span><b id="t_twr">-</b></div><div><span>KÜTLE</span><b id="t_mass">-</b></div><div><span>SERVO</span><b id="t_servo">-</b></div>
+          <div><span id="t_twrL">TWR (anlık)</span><b id="t_twr">-</b></div><div><span>KÜTLE</span><b id="t_mass">-</b></div><div><span>SERVO</span><b id="t_servo">-</b></div>
           <div><span>AKTİF WP</span><b id="t_wp">-</b></div><div><span>MOD</span><b id="t_mode">-</b></div><div><span>DURUM</span><b id="t_state">-</b></div>
           <div><span>GPS</span><b id="t_gps">-</b></div><div><span>YÜK</span><b id="t_pay">-</b></div><div><span>RÜZGAR</span><b id="t_wind">-</b></div>
           <div><span>YÖN</span><b id="t_hdg">-</b></div><div><span>UÇUŞ SÜRESİ</span><b id="t_time">-</b></div><div><span>SON İSABET</span><b id="t_hit">-</b></div>
@@ -295,6 +306,7 @@ const fmtT=t=>{t=Math.max(0,t|0);return String((t/60)|0).padStart(2,'0')+':'+Str
 const FRAMES={
  xquad:{name:'X-Quad',desc:'Kompakt ve çevik; merkezi yük, nötr ağırlık merkezi.',mass:420,nLift:4,pusher:false,cdA:0.055,inertia:1.0,wing:null,battZ:0,payZ:0,maxTilt:30},
  hframe:{name:'H-Frame',desc:'Uzun gövde; batarya arkada, yük bölmesi önde. Daha ağır ve ataletli.',mass:560,nLift:4,pusher:false,cdA:0.066,inertia:1.2,wing:null,battZ:0,payZ:0,maxTilt:28},
+ fixedwing:{name:'Sabit Kanat',desc:'2 m kanat açıklığı, burun motoru. Hızlı ve verimli; havada duramaz — pistten kalkar, yaklaşma hattından iner (stall hızı altına inemez).',mass:520,nLift:0,nMot:1,pusher:false,fixed:true,cdA:0.03,inertia:1.0,wing:{S:0.55,b:2.0,CLmax:1.35,cd0:0.04},battZ:0,payZ:0,maxTilt:45},
  hybrid:{name:'Hibrit VTOL',desc:'Kanatlı gövde + 4 kaldırma motoru + itici motor. Düşük sürükleme, uzun menzil.',mass:1150,nLift:4,pusher:true,cdA:0.028,inertia:1.65,wing:{S:0.42,CL:0.75},battZ:0,payZ:0,maxTilt:24}
 };
 const MOTORS={
@@ -360,6 +372,7 @@ const PRESETS={
  heavy:{label:'Ağır Yük H-Frame',cfg:{frame:'hframe',motor:'mn4014',prop:'p15x55',esc:'e60',fc:'cube',gps:'here2',bat:'b6s12',payN:3,payG:500}},
  hybrid:{label:'Hibrit Menzil',cfg:{frame:'hybrid',motor:'mn4014',prop:'p15x55',esc:'e45',fc:'cube',gps:'here3',bat:'b6s12',payN:2,payG:500}},
  mini:{label:'Mini 8"',cfg:{frame:'xquad',motor:'f2807',prop:'p8x45',esc:'e45',fc:'pix248',gps:'here2',bat:'b4s33',payN:1,payG:100}},
+ fixed:{label:'Sabit Kanat',cfg:{frame:'fixedwing',motor:'mn3110',prop:'p10x45',esc:'e45',fc:'cube',gps:'here2',bat:'b6s30',payN:2,payG:250}},
  def:{label:'Varsayılan',cfg:{frame:'xquad',motor:'mn3508',prop:'p10x45',esc:'e45',fc:'pix248',gps:'m8n',bat:'b6s8',payN:2,payG:250}}
 };
 
@@ -379,6 +392,7 @@ function motorModel(m,p,V,iLim){
 }
 function layoutFor(fk,Dm,c){
  const L={motors:[],pusher:null,R:0};
+ if(fk==='fixedwing'){L.pusher={x:0,z:-0.6,tractor:true};L.R=FRAMES.fixedwing.wing.b/2;return L;}
  if(fk==='xquad'){const R=Math.max(0.17,0.82*Dm+0.02),s=R/Math.SQRT2;
   L.motors=[{x:-s,z:-s,dir:1,front:true},{x:s,z:-s,dir:-1,front:true},{x:s,z:s,dir:1},{x:-s,z:s,dir:-1}];L.R=R;}
  else if(fk==='hframe'){const mn=(1.08*Dm+0.02)/2;let w=0.72*Dm+0.06,l=0.8*Dm+0.07;
@@ -393,6 +407,7 @@ function layoutFor(fk,Dm,c){
 function powerAt(sp,massKg,v,Vscale){
  const fr=sp.fr,Wt=massKg*G,drag=0.5*RHO*(fr.cdA+0.003*sp.payLeft)*v*v;
  const Tm=sp.Tm*Vscale*(1-sp.cgLoss);
+ if(fr.fixed){const V=Math.max(v,1.25*sp.Vs),q=0.5*RHO*V*V,CL=Wt/(q*sp.fw.S),D=q*sp.fw.S*(sp.fw.cd0+sp.fw.k*CL*CL)+q*0.003*sp.payLeft;return D*V/0.62/sp.es.eff+sp.avion;}
  let Ptot;
  if(fr.pusher){
   const Lw=Math.min(0.5*RHO*v*v*fr.wing.S*fr.wing.CL,0.9*Wt),Tv=Wt-Lw;
@@ -408,7 +423,7 @@ function powerAt(sp,massKg,v,Vscale){
 function payCdA(){return 0.006+0.000012*cfg.payG;}
 function computeSpecs(c,payLeft){
  const fr=FRAMES[c.frame],mo=MOTORS[c.motor],pr=PROPS[c.prop],es=ESCS[c.esc],fc=FCS[c.fc],gp=GPSS[c.gps],ba=BATS[c.bat];
- const nL=fr.nLift,nM=nL+(fr.pusher?1:0),pl=payLeft==null?c.payN:payLeft;
+ const nL=fr.nLift,nM=fr.nMot||(nL+(fr.pusher?1:0)),pl=payLeft==null?c.payN:payLeft;
  const Dm=pr.D*0.0254,L=layoutFor(c.frame,Dm,c);
  const Vnom=ba.cells*3.7,battA=ba.cap/1000*ba.C;
  const full=motorModel(mo,pr,Vnom,1e9);
@@ -422,13 +437,24 @@ function computeSpecs(c,payLeft){
  const battZ=ba.mass>0?clamp(-mP/ba.mass,-0.3,0.3):0; /* pil, ağırlık merkezini ortalar */
  const mz=mP+ba.mass*battZ;
  const cgZ=mz/mass,cgRatio=Math.abs(cgZ)/L.R,cgLoss=clamp(cgRatio*1.2,0,0.3);
- const Tlift=nL*mm.T*(1-cgLoss),twr=Tlift/(mass/1000*G);
+ const Tlift=(fr.fixed?1:nL)*mm.T*(1-cgLoss),twr=Tlift/(mass/1000*G);
  const sp={fr,mo,pr,es,fc,gp,ba,nL,nM,L,R:L.R,Dm,parts,mass,massKg:mass/1000,Vnom,battA,mm,full,Tm:mm.T,Pm:mm.P,Tlift,twr,cgZ,cgRatio,cgLoss,
   avion:fc.power+gp.power+2,Wh:Vnom*ba.cap/1000,payLeft:pl,maxTilt:fr.maxTilt*D2R,
   battZ,tau:clamp(0.085*Math.sqrt(mass/2500)*fr.inertia*(1+3*cgRatio)/fc.resp,0.05,0.7)};
- sp.hoverP=powerAt(sp,sp.massKg,0,1);sp.cruiseP=powerAt(sp,sp.massKg,10,1);
+ if(fr.fixed){const w=fr.wing,Wt=sp.massKg*G,AR=w.b*w.b/w.S,k=1/(Math.PI*0.8*AR);
+  sp.fw={S:w.S,b:w.b,AR,cd0:w.cd0,k,CLmax:w.CLmax};
+  sp.Vs=Math.sqrt(2*Wt/(RHO*w.S*w.CLmax));
+  sp.Vp=Math.max(8,0.9*pr.p*0.0254*mm.rpm/60);
+  const Dl=V=>{const q=0.5*RHO*V*V,CL=Wt/(q*w.S);return q*w.S*(w.cd0+k*CL*CL)+q*0.003*sp.payLeft;};
+  const Ta=V=>sp.Tlift*Math.max(0,1-V/sp.Vp);
+  let Vm=sp.Vs;for(let V=sp.Vs;V<sp.Vp;V+=0.25){if(Ta(V)>=Dl(V))Vm=V;}
+  sp.Vmax=Vm;let cl=0;for(let V=1.2*sp.Vs;V<Vm;V+=0.5)cl=Math.max(cl,(Ta(V)-Dl(V))*V/Wt);
+  sp.climbMax=cl;sp.wl=Wt/w.S;sp.Vc=clamp(Math.max(12,1.5*sp.Vs),1.3*sp.Vs,Math.max(1.3*sp.Vs,0.85*Vm));
+ }
+ sp.hoverP=powerAt(sp,sp.massKg,0,1);sp.cruiseP=powerAt(sp,sp.massKg,fr.fixed?sp.Vc:10,1);
  const Eu=sp.Wh*0.85;
- sp.hoverMin=twr>1?Eu/sp.hoverP*60:0;sp.cruiseMin=twr>1?Eu/sp.cruiseP*60:0;
+ const canFly=fr.fixed?twr>0.25:twr>1;
+ sp.hoverMin=canFly?Eu/(fr.fixed?sp.cruiseP:sp.hoverP)*60:0;sp.cruiseMin=canFly?Eu/sp.cruiseP*60:0;
  sp.eff=mass/sp.hoverP;
  const Imot=Math.min(full.Ineed,mo.maxA);
  sp.escLoad=Imot/es.rating*100;
@@ -440,7 +466,13 @@ function computeSpecs(c,payLeft){
  if(nL*mm.I>battA)wr.push({t:'warn',m:`Batarya deşarj limiti (${f1(battA,0)} A) motor toplamının (${f1(nL*mm.I,0)} A) altında; itki sınırlı.`});
  if(mm.tip>210)wr.push({t:'warn',m:`Pervane uç hızı yüksek (${f1(mm.tip,0)} m/s): verimsiz ve gürültülü.`});
  if(mo.kv*Vnom>32000)wr.push({t:'warn',m:`Motor KV×Voltaj çok yüksek (${f1(mo.kv*Vnom,0)}): bu pil ile motor aşırı devire çıkar.`});
- if(twr<1.0)wr.push({t:'bad',m:`TWR ${f1(twr,2)} < 1.0: İHA kalkış yapamaz.`});
+ if(fr.fixed){
+  if(twr<0.25)wr.push({t:'bad',m:`İtki/ağırlık ${f1(twr,2)} < 0.25: kalkış ve tırmanış yapamaz.`});
+  else if(twr<0.45)wr.push({t:'warn',m:`İtki/ağırlık ${f1(twr,2)} düşük: tırmanış zayıf, yük ile kalkış zor.`});
+  if(sp.Vs>12)wr.push({t:'warn',m:`Stall hızı ${f1(sp.Vs,1)} m/s yüksek (kanat yüklemesi ${f1(sp.wl,0)} N/m²): kalkış/iniş zor ve hızlı.`});
+  if(sp.Vmax<1.6*sp.Vs)wr.push({t:'warn',m:`Hız aralığı dar: stall ${f1(sp.Vs,1)} m/s, maks ${f1(sp.Vmax,1)} m/s. Daha güçlü motor/pil veya daha az yük deneyin.`});
+  else if(sp.climbMax<1.5)wr.push({t:'warn',m:`Maks tırmanış ${f1(sp.climbMax,1)} m/s düşük.`});
+ }else if(twr<1.0)wr.push({t:'bad',m:`TWR ${f1(twr,2)} < 1.0: İHA kalkış yapamaz.`});
  else if(twr<1.3)wr.push({t:'warn',m:`TWR ${f1(twr,2)} < 1.3: kalkışta zorlanma, düşük manevra payı.`});
  if(cgRatio>0.1)wr.push({t:'warn',m:`Ağırlık merkezi ${f1(cgZ*1000,0)} mm kaymış: kararlılık ve itki payı azaldı.`});
  if(!fc.auto)wr.push({t:'warn',m:'Bu uçuş kontrolcüsü otonom görev desteklemiyor: sadece manuel.'});
@@ -482,7 +514,7 @@ function newState(){
   bias:{x:0,y:0,z:0},est:{x:0,y:0,z:0},iv:{x:0,z:0},hold:{set:false,x:0,z:0},loiter:!!P.loiter,
   wpIdx:0,loiterT:null,rtlStage:0,landHold:{x:0,z:0},landT:0,toHold:null,takeoffT:0,drop:null,
   fs1:false,fs2:false,flightT:0,maxAlt:0,results:[],lastHit:null,
-  toAlt:P.toAlt,guided:false,circ:null,spl:null,actHold:null,landMission:false,circAlt:0};
+  toAlt:P.toAlt,guided:false,circ:null,spl:null,actHold:null,landMission:false,circAlt:0,V:0,gam:0,fwU:0,fwThrM:0,fwL:null,fwOrb:null,fwHere:false,stallW:false};
 }
 function resetSim(){bodies.length=0;impacts.length=0;TRAIL.length=0;CCIP=null;SP=computeSpecs(cfg);S=newState();
  C.kind='off';C.yawTgt=null;if(hooks.onReset)hooks.onReset();}
@@ -553,9 +585,10 @@ function planDrop(T,alt,from,w){
  if(ws>1.5)u={x:-w.x/ws,z:-w.z/ws};
  else{const dx=T.x-from.x,dz=T.z-from.z,d=Math.hypot(dx,dz)||1;u={x:dx/d,z:dz/d};}
  const c={x:-u.z,z:u.x};
- const pre=predictImpact(0,alt+0.07,0,u.x*P.dropV,0,u.z*P.dropV,w.x,w.z,cfg.payG/1000,payCdA());
+ const vd=SP.fr.fixed?fwTrackSpeed(u,c,w):P.dropV;
+ const pre=predictImpact(0,alt+0.07,0,u.x*vd,0,u.z*vd,w.x,w.z,cfg.payG/1000,payCdA());
  const dc=pre.x*c.x+pre.z*c.z,du=pre.x*u.x+pre.z*u.z;
- const L0={x:T.x-c.x*dc,z:T.z-c.z*dc},app=SP.fr.pusher?110:80;
+ const L0={x:T.x-c.x*dc,z:T.z-c.z*dc},app=SP.fr.fixed?160:(SP.fr.pusher?110:80);
  return{T,u,c,alt,off:dc,du,L0,rel:{x:L0.x-u.x*du,z:L0.z-u.z*du},ip:{x:L0.x-u.x*app,z:L0.z-u.z*app},tof:pre.t};
 }
 function buildPath(){
@@ -626,14 +659,14 @@ function servoWp(wp){
  if(a>=80){log(`SERVO ${f1(a,0)}° → kanca açılıyor`,'warn');if(!releasePayload(true)){S.servoCmd=a;S.servoT=t;}}
  else{S.servoCmd=a;S.servoT=t;log(`SERVO → ${f1(a,0)}°`,'info');}
 }
-function goLand(x,z,mission){S.landHold={x,z};S.state='LAND';S.landT=0;S.landMission=!!mission;S.drop=null;S.loiterT=null;}
+function goLand(x,z,mission){S.landHold={x,z};S.state='LAND';S.landT=0;S.landMission=!!mission;S.drop=null;S.loiterT=null;S.fwL=null;S.fwHere=Math.abs(x-S.est.x)<0.01&&Math.abs(z-S.est.z)<0.01;}
 function cmdTakeoff(){
  if(S.crashed){log('Önce RESET (R) gerekli','warn');return;}
  if(!S.onGround){log('TAKEOFF: İHA zaten havada','warn');return;}
  if(!SP.fc.auto||!S.gpsOK){log('TAKEOFF için otonom destekli FC ve GPS Fix gerekir','warn');return;}
  if(!S.armed){arm();if(!S.armed)return;}
  S.mode='AUTO';S.state='TAKEOFF';S.toHold=null;S.takeoffT=0;S.toAlt=P.toAlt;S.guided=true;S.iv.x=S.iv.z=0;S.drop=null;S.circ=null;S.spl=null;
- log(`TAKEOFF: ${P.toAlt} m'ye dikey kalkış → HOVER`,'ok');
+ log(SP.fr.fixed?`TAKEOFF: pist kalkışı → ${P.toAlt} m, sonra daire (LOITER)`:`TAKEOFF: ${P.toAlt} m'ye dikey kalkış → HOVER`,'ok');
 }
 function cmdCircle(){
  if(!S.armed||S.onGround){log('CIRCLE için havada ve ARMED olmalı','warn');return;}
@@ -649,8 +682,9 @@ function arm(){
  if(S.armed)return;
  if(S.crashed){log('Önce RESET (R) gerekli','warn');return;}
  if(SP.errors.length){log('ARM engellendi: '+SP.errors[0].m,'bad');return;}
- S.armed=true;S.state='ARMED';SND.ev('arm');log('ARMED — motorlar rölantide','ok');
- if(SP.twr<1)log('UYARI: TWR<1.0, kalkış mümkün değil','bad');
+ S.armed=true;S.state='ARMED';S.fwThrM=0;SND.ev('arm');log('ARMED — motorlar rölantide','ok');
+ if(SP.fr.fixed){if(SP.twr<0.25)log('UYARI: itki/ağırlık çok düşük, kalkış mümkün değil','bad');else log(`Sabit kanat: tam gaz koşu, rotasyon ≥ ${f1(1.3*SP.Vs,1)} m/s (stall ${f1(SP.Vs,1)} m/s)`,'info');}
+ else if(SP.twr<1)log('UYARI: TWR<1.0, kalkış mümkün değil','bad');
  else if(SP.twr<1.3)log('UYARI: TWR<1.3, kalkışta zorlanma olacak','warn');
 }
 function disarm(){
@@ -700,6 +734,7 @@ function finishMission(){
 
 /* --- Manuel kontrol --- */
 function manualControl(dt){
+ if(SP.fr.fixed)return manualFW(dt);
  const I=input;
  const vzDes=I.climb>=0?I.climb*3.5:I.climb*2.5;
  const act=Math.abs(I.pitch)>0.04||Math.abs(I.roll)>0.04;
@@ -726,6 +761,7 @@ function dropMiss(why){
  else{D.stage='APPROACH';D.runT=0;}
 }
 function autoControl(dt){
+ if(SP.fr.fixed)return autoFW(dt);
  switch(S.state){
  case 'TAKEOFF':{
   if(!S.toHold)S.toHold={x:S.est.x,z:S.est.z};
@@ -807,7 +843,7 @@ function autoControl(dt){
  }
 }
 function control(dt){
- C.kind='off';C.yawRate=0;C.yawTgt=null;C.vzDes=0;C.ay=0;
+ C.kind='off';C.yawRate=0;C.yawTgt=null;C.vzDes=0;C.ay=0;C.brake=false;
  if(!S.armed||S.crashed||S.battDead)return;
  if(S.mode==='MANUAL')manualControl(dt);else autoControl(dt);
 }
@@ -852,6 +888,7 @@ function servoStep(dt){
 
 /* --- Dinamik (nokta kütle + gecikmeli yönelim) --- */
 function dynamics(dt){
+ if(SP.fr.fixed)return dynamicsFW(dt);
  const sp=SP,fr=sp.fr,m=sp.massKg,alive=S.armed&&!S.crashed&&!S.battDead;
  let thC=0,phC=0,ayC=0;
  if(alive){
@@ -900,7 +937,8 @@ function battery(dt){
   const T=S.thrN,scaleV=Math.pow(clamp(S.volt/sp.Vnom,0.6,1.3),1.2),Tm=sp.Tm*(1-sp.cgLoss)*scaleV;
   const vh=Math.hypot(S.vel.x-S.wind.x,S.vel.z-S.wind.z),ny=Math.cos(S.pitch)*Math.cos(S.roll);
   let Pl,Pp=0;
-  if(fr.pusher){
+  if(fr.fixed){Pl=sp.Pm*Math.pow(S.fwU,1.5)*Math.max(0,1-S.V/sp.Vp)*0.85;Pp=T*S.V/0.65;}
+  else if(fr.pusher){
    Pl=sp.nL*sp.Pm*Math.pow(clamp(T*ny/sp.nL/Tm,0,1.5),1.5);
    const Fh=T*Math.sqrt(Math.max(0,1-ny*ny));Pp=Fh*vh/0.62/0.85+3;S.pushFrac=clamp(Fh/(sp.massKg*G*0.3),0,1);
   }else Pl=sp.nL*sp.Pm*Math.pow(clamp(T/sp.nL/Tm,0,1.5),1.5)*(1-0.18*Math.min(1,vh/12));
@@ -912,6 +950,217 @@ function battery(dt){
  const R=sp.ba.cells*0.004*(5000/sp.ba.cap)*clamp(Math.sqrt(25/sp.ba.C),0.45,1.4);
  S.volt=Math.max(0,sp.ba.cells*cellV(S.pct)-S.curr*R);
  if(S.pct<=0&&!S.battDead){S.battDead=true;log('BATARYA BİTTİ — motorlar durdu','bad');}
+}
+
+/* ============ SABİT KANAT: dinamik + kontrol ============ */
+function fwBank(){return SP.maxTilt*0.85;}
+function fwRmin(v){return v*v/(G*Math.tan(fwBank()));}
+function fwCruise(){return clamp(Math.max(P.cruise,1.5*SP.Vs),1.3*SP.Vs,Math.max(1.3*SP.Vs,0.85*SP.Vmax));}
+function fwR(){return Math.max(P.circR,1.6*fwRmin(fwCruise()));}
+function fwTrackSpeed(u,c,w){const par=w.x*u.x+w.z*u.z,perp=w.x*c.x+w.z*c.z,V=fwCruise();return Math.max(3,par+Math.sqrt(Math.max(1,V*V-perp*perp)));}
+function fwDrag(V,n){const q=0.5*RHO*V*V,CL=n*SP.massKg*G/Math.max(q*SP.fw.S,1e-3);return q*SP.fw.S*(SP.fw.cd0+SP.fw.k*CL*CL)+q*0.003*SP.payLeft;}
+function fwTav(V){const sc=Math.pow(clamp(S.volt/SP.Vnom,0.6,1.3),1.2);return Math.max(0.01,SP.Tlift*sc*Math.max(0,1-V/SP.Vp));}
+function dynamicsFW(dt){
+ const sp=SP,fw=sp.fw,m=sp.massKg,W=m*G;
+ if(S.crashed){S.V=0;S.vel.x=S.vel.y=S.vel.z=0;S.thrN=0;S.thrFrac=0;S.pushFrac=0;S.fwU=0;return;}
+ const alive=S.armed&&!S.battDead;
+ let phC=0,gC=alive?0:-0.1,thr=0;
+ if(alive&&C.kind==='fw'){phC=clamp(C.bank,-fwBank(),fwBank());gC=clamp(C.gam,-0.5,0.55);thr=clamp(C.thr,0,1);}
+ S.fwU+=clamp(thr-S.fwU,-2.5*dt,2.5*dt);
+ const V=Math.max(S.V,3),q=0.5*RHO*S.V*S.V,cosg=Math.cos(S.gam),cosP=Math.cos(S.roll);
+ const nMax=q*fw.S*fw.CLmax/W;
+ let n=(cosg+(V/G)*2.2*(gC-S.gam))/Math.max(0.35,cosP);
+ n=clamp(n,0,nMax);
+ const CL=q>0.5?n*W/(q*fw.S):0,Dr=q*fw.S*(fw.cd0+fw.k*CL*CL)+q*0.003*sp.payLeft;
+ const T=S.fwU*fwTav(S.V);
+ let Vd=(T-Dr)/m-G*Math.sin(S.gam);
+ if(S.onGround&&S.V>0)Vd-=G*(0.04+(C.brake?0.35:0)+(alive?0:0.3));
+ let gd=(G/V)*(n*cosP-cosg);
+ if(S.onGround){if(gd>0)S.onGround=false;else{gd=0;S.gam=0;}}
+ S.V=Math.max(0,S.V+Vd*dt);
+ S.gam=clamp(S.gam+gd*dt,-1.2,1.2);
+ if(S.onGround)S.roll*=0.6;else S.roll+=(phC-S.roll)*(1-Math.exp(-dt/0.25));
+ let yr;
+ if(S.onGround)yr=C.yawRate*clamp(S.V/4,0,1);
+ else yr=G*Math.tan(S.roll)/Math.max(S.V,sp.Vs*0.8)+0.25*C.yawRate;
+ S.yawRate=yr;S.yaw=wrapPi(S.yaw+yr*dt);
+ const fx=Math.sin(S.yaw),fz=-Math.cos(S.yaw);
+ if(S.onGround){S.vel.x=S.V*fx;S.vel.z=S.V*fz;S.vel.y=0;}
+ else{const cg=Math.cos(S.gam);S.vel.x=S.V*cg*fx+S.wind.x;S.vel.z=S.V*cg*fz+S.wind.z;S.vel.y=S.V*Math.sin(S.gam);}
+ S.pos.x+=S.vel.x*dt;S.pos.y+=S.vel.y*dt;S.pos.z+=S.vel.z*dt;
+ if(S.pos.y<=0){
+  if(!S.onGround){
+   const sink=-S.vel.y;
+   if(sink>3.2||Math.abs(S.roll)>0.4||S.gam<-0.45||S.V>2.6*sp.Vs)crash(`sert temas (dikey ${f1(sink)} m/s, hız ${f1(S.V)} m/s, yatış ${f1(S.roll*R2D,0)}°)`);
+   else{S.onGround=true;S.gam=0;log(`İNİŞ: temas ${f1(sink,1)} m/s dikey, ${f1(S.V,1)} m/s hız`,'info');}
+  }
+  S.pos.y=0;
+ }
+ if(!S.onGround&&!S.crashed){
+  if(S.V<sp.Vs*0.97&&S.pos.y>3&&!S.stallW){S.stallW=true;log('STALL UYARISI: hız çok düşük — burnu indirin / gaz verin','bad');SND.ev('alarm');}
+  else if(S.V>sp.Vs*1.12)S.stallW=false;
+ }
+ if(!S.crashed){for(const o of OBST){if(S.pos.y<o.h&&Math.hypot(S.pos.x-o.x,S.pos.z-o.z)<o.r+0.6){crash(`engele çarpıldı (${o.h} m direk)`);break;}}}
+ if(!S.crashed&&WORLD){const o=worldHit(S.pos.x,S.pos.y,S.pos.z,0.6);if(o)crash(o.tree?`ağaca çarpıldı (${f1(o.h,0)} m)`:`binaya çarpıldı (${f1(o.h,0)} m)`);}
+ S.thrN=T;S.thrFrac=S.fwU;S.pushFrac=S.fwU;S.Lw=0;
+ if(S.onGround)S.pitch=0;else S.pitch=-(S.gam+clamp(CL/5,-0.1,0.35)-0.05);
+}
+function manualFW(dt){
+ const I=input;
+ S.fwThrM=clamp(S.fwThrM+I.climb*0.5*dt,0,1);
+ let g=-I.pitch*0.45;
+ if(S.onGround&&S.V<1.2*SP.Vs)g=Math.min(g,0);
+ C.kind='fw';C.bank=I.roll*fwBank();C.gam=g;C.thr=S.fwThrM;C.yawRate=I.yaw*60*D2R;C.brake=S.onGround&&S.fwThrM<0.05;
+}
+function fwThr(Vt,gC){
+ const V=Math.max(S.V,4),n=1/Math.max(0.5,Math.cos(S.roll));
+ const Tn=fwDrag(V,n)+SP.massKg*G*Math.sin(gC)+SP.massKg*0.7*(Vt-S.V);
+ return clamp(Tn/fwTav(V),0,1);
+}
+function fwCourse(chiDes,ff){
+ const gs=Math.hypot(S.vel.x,S.vel.z),chi=gs>2?Math.atan2(S.vel.x,-S.vel.z):S.yaw;
+ const rate=clamp((ff||0)+1.3*wrapPi(chiDes-chi),-0.6,0.6);
+ return clamp(Math.atan(Math.max(S.V,SP.Vs)*rate/G),-fwBank(),fwBank());
+}
+function fwAlt(alt,maxClimb){
+ const V=Math.max(S.V,SP.Vs);
+ let gc=Math.asin(clamp(clamp(0.45*(alt-S.est.y),-2.5,maxClimb||3)/V,-0.3,0.35));
+ if(S.V<SP.Vs*1.25)gc=Math.min(gc,0.02);
+ if(S.V<SP.Vs*1.12)gc=Math.min(gc,-0.05);
+ return gc;
+}
+function fwNav(tx,tz,alt,Vt){
+ const dx=tx-S.est.x,dz=tz-S.est.z,d=Math.hypot(dx,dz);
+ C.kind='fw';C.bank=fwCourse(Math.atan2(dx,-dz));C.gam=fwAlt(alt);C.thr=fwThr(Vt,C.gam);return d;
+}
+function fwLine(P0,u,alt,Vt,g){
+ const rx=S.est.x-P0.x,rz=S.est.z-P0.z,e=rx*(-u.z)+rz*u.x,L=Math.max(30,2.2*S.V);
+ const chi=Math.atan2(u.x,-u.z)-clamp(Math.atan(e/L),-1.1,1.1);
+ C.kind='fw';C.bank=fwCourse(chi);C.gam=g!=null?g:fwAlt(alt);C.thr=fwThr(Vt,C.gam);return e;
+}
+function fwOrbit(cx,cz,R,alt,Vt){
+ const dx=S.est.x-cx,dz=S.est.z-cz,d=Math.hypot(dx,dz)||1,th=Math.atan2(dx,-dz),Lc=Math.max(25,0.7*R);
+ const chi=th+Math.PI/2+clamp(Math.atan((d-R)/Lc),-1.2,1.2),ff=S.V/R*clamp(1-Math.abs(d-R)/R,0,1);
+ C.kind='fw';C.bank=fwCourse(chi,ff);C.gam=fwAlt(alt);C.thr=fwThr(Vt,C.gam);return d;
+}
+function fwTakeoff(alt,dt){
+ if(!S.toHold){const w=S.windEst,ws=Math.hypot(w.x,w.z);S.toHold={hdg:ws>1.5?Math.atan2(-w.x,w.z):S.yaw};if(ws>1.5)S.yaw=S.toHold.hdg;}
+ const hd=S.toHold.hdg,Vt=Math.max(fwCruise(),1.6*SP.Vs);
+ C.kind='fw';
+ if(S.onGround){C.bank=0;C.gam=S.V>=1.3*SP.Vs?0.2:0;C.thr=1;}
+ else{C.bank=fwCourse(hd);C.gam=Math.max(fwAlt(alt,3.5),S.pos.y<6?0.05:-1);C.thr=(alt-S.est.y>6)?1:fwThr(Vt,C.gam);}
+ return !S.onGround&&S.est.y>=alt-2;
+}
+function fwLandInit(){
+ const T=S.landHold,w=S.windEst,ws=Math.hypot(w.x,w.z),gL=0.085,Ah=clamp(S.est.y,14,35),dA=Ah/gL;
+ let u,Tt=T,stage='APP';
+ if(S.fwHere&&S.est.y>8){u={x:Math.sin(S.yaw),z:-Math.cos(S.yaw)};Tt={x:S.est.x+u.x*dA,z:S.est.z+u.z*dA};stage='FINAL';}
+ else if(ws>1.5)u={x:-w.x/ws,z:-w.z/ws};
+ else{const dx=T.x-S.est.x,dz=T.z-S.est.z,d=Math.hypot(dx,dz);u=d>40?{x:dx/d,z:dz/d}:{x:Math.sin(S.yaw),z:-Math.cos(S.yaw)};}
+ const back=dA+60+1.5*fwRmin(fwCruise());
+ S.fwL={T:Tt,u,gL,Ah,dA,stage,Q:{x:Tt.x-u.x*back,z:Tt.z-u.z*back}};
+ log(`İNİŞ: yaklaşma ${f1((Math.atan2(u.x,-u.z)*R2D+360)%360,0)}° , süzülme ${f1(gL*R2D,1)}° , ~${f1(dA,0)} m düz hat`,'warn');
+}
+function autoFW(dt){
+ if(S.state!=='LAND')S.fwL=null;
+ if(S.state!=='HOVER'&&S.state!=='CIRCLE')S.fwOrb=null;
+ const Vc=fwCruise();
+ switch(S.state){
+ case 'TAKEOFF':{
+  S.takeoffT+=dt;
+  if(fwTakeoff(S.toAlt,dt)){log(`Kalkış tamam (${f1(S.pos.y)} m, ${f1(S.V,1)} m/s)`+(S.guided?' → daire (LOITER)':` → WP${S.wpIdx+1}`),'ok');S.toHold=null;S.state=S.guided?'HOVER':'WAYPOINT_NAV';}
+  else if(S.takeoffT>25&&S.onGround){log('KALKIŞ BAŞARISIZ: yetersiz itki / hız','bad');disarm();}
+  break;}
+ case 'WAYPOINT_NAV':{
+  const wp=M.wps[S.wpIdx];
+  if(!wp){startRTL();break;}
+  if(wp.action==='DROP_PAYLOAD'&&!S.onGround){beginDrop(wp);break;}
+  if(wp.action==='TAKEOFF'||S.onGround){
+   S.takeoffT+=dt;
+   if(fwTakeoff(wp.action==='TAKEOFF'?wp.alt:Math.max(P.toAlt,10),dt)){S.toHold=null;if(wp.action==='TAKEOFF'){log(`TAKEOFF tamam (${f1(S.est.y)} m)`,'ok');advance();}}
+   else if(S.takeoffT>25&&S.onGround){log('KALKIŞ BAŞARISIZ: yetersiz itki / hız','bad');disarm();}
+   break;}
+  const R=fwR();
+  if(wp.action==='CIRCLE'){
+   const cr=Math.max(wp.r||20,R);
+   if(!S.circ||S.circ.wp!==S.wpIdx){S.circ={wp:S.wpIdx,cx:wp.x,cz:wp.z,r:cr,acc:0,prev:0,on:false,t:0};log(`CIRCLE: WP${S.wpIdx+1} merkez, r=${f1(cr,0)} m, ${wp.n||1} tur`,'info');}
+   const c=S.circ;c.t+=dt;const d=fwOrbit(c.cx,c.cz,c.r,wp.alt,Vc),th=Math.atan2(S.est.z-c.cz,S.est.x-c.cx);
+   if(!c.on&&Math.abs(d-c.r)<0.35*c.r){c.on=true;c.prev=th;}else if(c.on){c.acc+=wrapPi(th-c.prev);c.prev=th;}
+   if((c.on&&c.acc>=2*Math.PI*(wp.n||1)-0.2)||c.t>900){log(`CIRCLE tamam (WP${S.wpIdx+1})`,'ok');advance();}
+   break;}
+  if(S.loiterT!=null){fwOrbit(wp.x,wp.z,R,wp.alt,Vc);S.loiterT-=dt;if(S.loiterT<=0){S.loiterT=null;log(wp.action==='SERVO'?`SERVO bekleme bitti (WP${S.wpIdx+1})`:`LOITER bitti (WP${S.wpIdx+1})`,'info');advance();}break;}
+  const d=fwNav(wp.x,wp.z,wp.alt,Vc),acc=Math.max(28,1.5*fwRmin(Vc));
+  const dot=(wp.x-S.est.x)*Math.sin(S.yaw)+(wp.z-S.est.z)*(-Math.cos(S.yaw));
+  if(d<acc||(d<3*acc&&dot<0)){
+   log(`WP${S.wpIdx+1} ulaşıldı (${wp.action})`,'ok');
+   if(wp.action==='LOITER'){S.loiterT=Math.max(1,wp.t||8);log(`LOITER ${S.loiterT} sn (daire)`,'info');}
+   else if(wp.action==='RTL')startRTL();
+   else if(wp.action==='LAND'){log(`LAND: WP${S.wpIdx+1} noktasına iniş`,'warn');goLand(wp.x,wp.z,true);}
+   else if(wp.action==='SERVO'){servoWp(wp);S.loiterT=Math.max(0.5,wp.t||1.5);}
+   else advance();
+  }
+  break;}
+ case 'PAYLOAD_DROP':{
+  const D=S.drop;if(!D){S.state='WAYPOINT_NAV';break;}
+  if(D.stage==='APPROACH'){
+   const back=SP.fr.fixed?160+2.5*fwRmin(Vc)+80:0,Q={x:D.L0.x-D.u.x*back,z:D.L0.z-D.u.z*back};
+   const d=fwNav(Q.x,Q.z,D.alt,Vc);
+   if(d<30){D.stage='RUN';D.runT=0;log('Bırakma hattına hizalandı','info');}
+  }else if(D.stage==='RUN'){
+   D.runT+=dt;
+   const e=fwLine(D.L0,D.u,D.alt,Vc);
+   const lead=0.12,pre=predictImpact(S.est.x+S.vel.x*lead,S.est.y+0.07,S.est.z+S.vel.z*lead,S.vel.x,S.vel.y,S.vel.z,S.windEst.x,S.windEst.z,cfg.payG/1000,payCdA());
+   const ox=pre.x-D.T.x,oz=pre.z-D.T.z;
+   D.al=ox*D.u.x+oz*D.u.z;D.cr=ox*D.c.x+oz*D.c.z;D.pre=pre;
+   const past=(S.est.x-D.T.x)*D.u.x+(S.est.z-D.T.z)*D.u.z;
+   if(D.al>=0){
+    if(Math.abs(D.cr)<6&&Math.abs(e)<12){
+     log(`Bırakma penceresi: boyuna ${f1(D.al)} m, yanal ${f1(D.cr)} m, hat hatası ${f1(e)} m`,'info');
+     if(releasePayload(true)){D.stage='EXIT';D.exitT=0;}else{S.drop=null;advance();}
+    }else dropMiss('yanal hata '+f1(D.cr)+' m');
+   }else if(past>60||D.runT>90)dropMiss('hedef geçildi');
+  }else{
+   fwLine(D.L0,D.u,D.alt,Vc);D.exitT+=dt;
+   if(D.exitT>3){S.drop=null;advance();}
+  }
+  break;}
+ case 'RTL':{
+  const ra=Math.max(P.rtlAlt,10),d=fwNav(0,0,ra,Vc);
+  if(d<Math.max(35,2*fwRmin(Vc))){goLand(0,0,false);log('HOME üzerinde → LAND','info');}
+  break;}
+ case 'LAND':{
+  if(!S.fwL)fwLandInit();
+  const F=S.fwL;
+  if(S.onGround){
+   C.kind='fw';C.thr=0;C.bank=0;C.gam=0;C.brake=true;
+   if(S.V<1){S.landT+=dt;if(S.landT>1.2){log('İniş tamam','ok');S.toHold=null;
+    if(S.landMission&&S.wpIdx<M.wps.length-1){S.landMission=false;S.landT=0;log('Görev yerden devam ediyor','info');advance();}
+    else finishMission();}}else S.landT=0;
+   break;}
+  const Vapp=Math.max(1.3*SP.Vs,Math.min(Vc,1.45*SP.Vs))+0.5*Math.hypot(S.windEst.x,S.windEst.z);
+  if(F.stage==='APP'){
+   if(fwNav(F.Q.x,F.Q.z,F.Ah,Vc)<35){F.stage='FINAL';log('Final yaklaşma hattı','info');}
+  }else{
+   const a=(F.T.x-S.est.x)*F.u.x+(F.T.z-S.est.z)*F.u.z,alt=S.est.y,altD=clamp(a*F.gL,0,F.Ah);
+   let g=-F.gL+clamp(0.03*(altD-alt),-0.08,0.08);
+   if(a>F.dA)g=fwAlt(F.Ah);
+   let Vt=Vapp;
+   if(alt<4){g=-clamp(alt/(1.3*Math.max(S.V,5)),0.015,F.gL);Vt=1.18*SP.Vs;}
+   fwLine(F.T,F.u,0,Vt,g);
+   if(alt<0.6)C.thr=0;
+  }
+  break;}
+ case 'HOVER':
+ case 'CIRCLE':{
+  const R=fwR();
+  if(S.state==='CIRCLE'&&S.circ&&S.circ.cx!=null){S.circ.r=Math.max(S.circ.r,R);fwOrbit(S.circ.cx,S.circ.cz,S.circ.r,S.circAlt,Vc);}
+  else{
+   if(!S.fwOrb)S.fwOrb={cx:S.est.x+Math.cos(S.yaw)*R,cz:S.est.z+Math.sin(S.yaw)*R};
+   fwOrbit(S.fwOrb.cx,S.fwOrb.cz,R,S.toAlt,Vc);
+  }
+  break;}
+ default:C.kind='fw';C.bank=0;C.gam=0;C.thr=0.3;
+ }
 }
 function failsafes(){
  if(!S.armed||S.onGround)return;
@@ -944,6 +1193,7 @@ function delWp(i){M.wps.splice(i,1);onMissionChange();}
 function setTarget(x,z){M.target={x:Math.round(x),z:Math.round(z)};onMissionChange();log(`Yük bırakma hedefi: (${M.target.x}, ${M.target.z})`,'info');}
 function missionCheck(){
  const w=[];
+ if(SP.fr.fixed)w.push({t:'ok',m:`Sabit kanat: havada duramaz. LOITER/CIRCLE daire olarak uçulur (min yarıçap ≈ ${f1(fwRmin(fwCruise()),0)} m), iniş için ≈ ${f1(25/0.085,0)} m düz yaklaşma gerekir.`});
  if(!M.wps.length)w.push({t:'warn',m:'Görevde waypoint yok.'});
  if(!SP.fc.auto)w.push({t:'bad',m:'Seçili uçuş kontrolcüsü otonom görev desteklemiyor.'});
  if(cfg.gps==='none')w.push({t:'bad',m:'GPS yok: otonom görev çalışmaz.'});
@@ -1089,26 +1339,29 @@ function buildDrone(c,sp){
  const Dm=pr.D*0.0254,L=layoutFor(c.frame,Dm,c);
  const g=new THREE.Group();g.rotation.order='YXZ';
  const out={group:g,props:[],pusher:null,horn:null,caps:[],hooks:[],L,cg:null};
- const add=(geo,mat,x,y,z,par)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,y,z);(par||g).add(o);return o;};
+ let TAG='frame';out.units=[];
+ const unit=(o,tag)=>{o.userData.part=tag;o.userData.bp=o.position.clone();out.units.push(o);return o;};
+ const add=(geo,mat,x,y,z,par)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,y,z);(par||g).add(o);if(!(par&&par.userData.part))unit(o,TAG);return o;};
  const BX=(w,h,d)=>new THREE.BoxGeometry(w,h,d),CY=(r,h,s)=>new THREE.CylinderGeometry(r,r,h,s||14);
  let topY=0.056;
  const mkMotor=(m,pusher)=>{
-  const mg=new THREE.Group();mg.position.set(m.x,pusher?0.02:(c.frame==='hybrid'?0.03:0.022),m.z);if(pusher)mg.rotation.x=Math.PI/2;g.add(mg);
+  const t0=TAG;TAG='motor';
+  const mg=new THREE.Group();mg.position.set(m.x,pusher?0.02:(c.frame==='hybrid'?0.03:0.022),m.z);if(pusher)mg.rotation.x=(m.tractor?-1:1)*Math.PI/2;g.add(mg);
   const rad=mo.d/2000+0.006;
-  add(CY(rad,0.035,16),MAT.motor,0,0,0,mg);add(CY(rad*0.8,0.01,16),MAT.alu,0,0.022,0,mg);
+  add(CY(rad,0.035,16),MAT.motor,0,0,0,mg);add(CY(rad*0.8,0.01,16),MAT.alu,0,0.022,0,mg);TAG='prop';
   const pg=new THREE.Group();pg.position.y=0.036;mg.add(pg);
   const spin=new THREE.Group();pg.add(spin);
   if(c.frame==='hframe'){for(let k=0;k<3;k++){const bg=new THREE.Group();bg.rotation.y=k*2.0944;spin.add(bg);add(BX(Dm/2,0.004,Math.max(0.016,Dm*0.07)),MAT.propG,Dm/4,0,0,bg);}}
   else add(BX(Dm,0.004,Math.max(0.018,Dm*0.075)),m.front?MAT.propF:MAT.propB,0,0,0,spin);add(CY(0.012,0.012,10),MAT.alu,0,0.006,0,spin);
-  const disc=new THREE.Mesh(new THREE.CircleGeometry(Dm/2,32),MAT.disc);disc.rotation.x=-Math.PI/2;disc.position.y=0.003;pg.add(disc);
-  return{spin,dir:m.dir||1};
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(Dm/2,32),MAT.disc);disc.rotation.x=-Math.PI/2;disc.position.y=0.003;pg.add(disc);unit(disc,'prop');
+  TAG=t0;return{spin,dir:m.dir||1};
  };
  if(c.frame==='xquad'){
   add(BX(0.17,0.012,0.23),MAT.carbon,0,0,0);add(BX(0.15,0.012,0.21),MAT.carbon,0,0.05,0);
   [[-.06,-.09],[.06,-.09],[.06,.09],[-.06,.09]].forEach(p=>add(CY(0.005,0.05,8),MAT.alu,p[0],0.025,p[1]));
   L.motors.forEach(m=>{const len=Math.hypot(m.x,m.z),a=Math.atan2(m.x,m.z);
    const arm=add(BX(0.024,0.018,len),m.front?MAT.armF:MAT.armB,m.x/2,0,m.z/2);arm.rotation.y=a;
-   const e=add(BX(0.02,0.008,0.045),MAT.esc,m.x*0.55,0.014,m.z*0.55);e.rotation.y=a;
+   TAG='esc';const e=add(BX(0.02,0.008,0.045),MAT.esc,m.x*0.55,0.014,m.z*0.55);e.rotation.y=a;TAG='frame';
    out.props.push(mkMotor(m,false));});
   topY=0.056;
  }else if(c.frame==='hframe'){
@@ -1121,17 +1374,36 @@ function buildDrone(c,sp){
    add(CY(0.075,0.006,32),MAT.carbon,0,0.014,z);add(CY(0.07,0.006,32),MAT.carbon,0,-0.014,z);
    [-1,1].forEach(sg=>add(BX(0.03,0.034,0.04),MAT.armF,sg*0.1,0,z));
    /* ESC'ler borunun üstünde */
-   [-1,1].forEach(sg=>add(BX(0.045,0.008,0.02),MAT.esc,sg*0.72*w,0.014,z));
+   TAG='esc';[-1,1].forEach(sg=>add(BX(0.045,0.008,0.02),MAT.esc,sg*0.72*w,0.014,z));TAG='frame';
   });
   /* motor tabanları */
-  L.motors.forEach(m=>add(BX(0.03,0.016,0.03),MAT.armB,m.x,0.004,m.z));
+  TAG='motor';L.motors.forEach(m=>add(BX(0.03,0.016,0.03),MAT.armB,m.x,0.004,m.z));TAG='frame';
   /* gövde: kırmızı 3B baskı tepsi + karbon üst plaka */
   add(BX(sw,0.036,1.7*l+0.03),MAT.armF,0,0.012,0.15*l);
   add(BX(sw*0.97,0.006,1.32*l),MAT.carbon,0,0.033,0.13*l);
   add(BX(0.03,0.02,0.022),MAT.horn,0,0.04,0.9*l);
   /* ön (alıcı tarafı): yeşil alıcı */
-  add(BX(0.04,0.008,0.085),MAT.rx,0,0.021,-(l+0.02));add(BX(0.028,0.0085,0.035),MAT.esc,0,0.021,-(l+0.03));
+  TAG='fc';add(BX(0.04,0.008,0.085),MAT.rx,0,0.021,-(l+0.02));add(BX(0.028,0.0085,0.035),MAT.esc,0,0.021,-(l+0.03));TAG='frame';
   L.motors.forEach(m=>out.props.push(mkMotor(m,false)));topY=0.036;
+ }else if(c.frame==='fixedwing'){
+  const hw=fr.wing.b/2,ch=fr.wing.S/fr.wing.b;
+  const fus=add(CY(0.055,0.9,18),MAT.white,0,0,0.0);fus.rotation.x=Math.PI/2;
+  const tl=add(new THREE.CylinderGeometry(0.018,0.055,0.6,16),MAT.white,0,0,0.75);tl.rotation.x=Math.PI/2;
+  const nose=add(new THREE.SphereGeometry(0.055,16,12),MAT.white,0,0,-0.45);
+  add(BX(2*hw,0.022,ch),MAT.white,0,0.025,-0.02);
+  [-1,1].forEach(sg=>{
+   add(BX(0.2,0.024,ch*0.92),MAT.armF,sg*(hw-0.1),0.025,-0.02);
+   add(BX(0.62,0.014,0.065),MAT.armB,sg*0.62,0.025,-0.02+ch/2+0.03);
+  });
+  add(BX(0.64,0.012,0.14),MAT.white,0,0.02,0.98);add(BX(0.64,0.013,0.05),MAT.armB,0,0.02,1.07);
+  add(BX(0.012,0.17,0.15),MAT.white,0,0.1,1.0);add(BX(0.013,0.15,0.05),MAT.armF,0,0.1,1.09);
+  TAG='esc';add(BX(0.025,0.01,0.05),MAT.esc,0,0.062,-0.3);TAG='frame';
+  /* tricycle iniş takımı */
+  [[-0.17,-0.08],[0.17,-0.08],[0,-0.36]].forEach(q=>{
+   add(CY(0.004,0.09,8),MAT.gear,q[0],-0.09,q[1]);
+   const wh=add(CY(0.035,0.016,14),MAT.motor,q[0],-0.135,q[1]);wh.rotation.z=Math.PI/2;
+  });
+  out.pusher=mkMotor({x:0,z:L.pusher.z,dir:1,tractor:true},true);topY=0.06;
  }else{
   const fus=add(new THREE.CylinderGeometry(0.07,0.055,0.86,18),MAT.white,0,0,0.02);fus.rotation.x=-Math.PI/2;
   const nose=add(new THREE.SphereGeometry(0.07,16,12),MAT.white,0,0,-0.43);nose.scale.set(1,1,1.2);
@@ -1139,37 +1411,43 @@ function buildDrone(c,sp){
   add(BX(1.34,0.02,0.27),MAT.white,0,0.015,-0.05);
   [-1,1].forEach(s=>{add(BX(0.04,0.021,0.27),MAT.armF,s*0.65,0.015,-0.05);
    add(BX(0.024,0.024,2*L.bl+0.42),MAT.armB,s*L.bx,0.005,0.09);
-   [-1,1].forEach(q=>add(BX(0.02,0.008,0.045),MAT.esc,s*L.bx,0.02,q*L.bl*0.6));});
+   TAG='esc';[-1,1].forEach(q=>add(BX(0.02,0.008,0.045),MAT.esc,s*L.bx,0.02,q*L.bl*0.6));TAG='frame';});
   add(BX(0.52,0.01,0.12),MAT.white,0,0.03,0.58);add(BX(0.012,0.16,0.14),MAT.white,0,0.1,0.58);
   L.motors.forEach(m=>out.props.push(mkMotor(m,false)));
   out.pusher=mkMotor({x:0,z:L.pusher.z,dir:1},true);topY=0.075;
  }
  /* Batarya (kapasiteye göre boyut) */
+ TAG='batt';
  const bz=sp&&sp.battZ!=null?sp.battZ:fr.battZ;
  const bl=0.09+ba.cap/1000*0.011,bw=0.04+0.002*ba.cells,bh=0.03+ba.cap/1000*0.004;
  add(BX(bw,bh,bl),MAT.batt,0,topY+bh/2,bz);add(BX(bw+0.002,bh*0.25,bl*0.5),MAT.white,0,topY+bh/2,bz);
  /* FC */
- if(c.frame==='hybrid'){add(BX(0.045,0.01,0.045),MAT.fc,0,topY+0.005,0.22);add(CY(0.004,0.04,6),MAT.led,0.015,topY+0.012,0.22);}
+ TAG='fc';
+ if(c.frame==='hybrid'||c.frame==='fixedwing'){add(BX(0.045,0.01,0.045),MAT.fc,0,topY+0.005,0.22);add(CY(0.004,0.04,6),MAT.led,0.015,topY+0.012,0.22);}
  else{add(BX(0.045,0.012,0.045),MAT.fc,0,0.027,-0.03);add(CY(0.004,0.03,6),MAT.led,0.016,0.04,-0.03);}
  /* GPS direği + puck */
+ TAG='gps';
  if(c.gps!=='none'){
-  const gz=c.frame==='hybrid'?0.34:(c.frame==='hframe'?(L.l+0.07):0.1),big=c.gps==='here3'?1.2:1,gy=topY+0.11;
+  const gz=(c.frame==='hybrid'||c.frame==='fixedwing')?0.34:(c.frame==='hframe'?(L.l+0.07):0.1),big=c.gps==='here3'?1.2:1,gy=topY+0.11;
   add(CY(0.004,0.11,8),MAT.alu,0,topY+0.055,gz);add(CY(0.03*big,0.012,20),MAT.puck,0,gy,gz);add(CY(0.026*big,0.004,20),c.gps==='here3'?MAT.horn:MAT.led,0,gy+0.008,gz);
  }
  /* İniş takımı */
+ TAG='frame';
  const lx=c.frame==='hybrid'?0.09:0.075,lz=c.frame==='hybrid'?0.15:0.085;
  if(c.frame==='hframe')L.motors.forEach(m=>add(CY(0.012,0.2,10),MAT.carbon,m.x,-0.07,m.z));
- else{[[-1,-1],[1,-1],[1,1],[-1,1]].forEach(q=>add(CY(0.004,0.17,8),MAT.gear,q[0]*lx,-0.085,q[1]*lz));
+ else if(c.frame!=='fixedwing'){[[-1,-1],[1,-1],[1,1],[-1,1]].forEach(q=>add(CY(0.004,0.17,8),MAT.gear,q[0]*lx,-0.085,q[1]*lz));
  [-1,1].forEach(s=>{const sk=add(CY(0.005,c.frame==='hybrid'?0.42:0.3,8),MAT.gear,s*lx,-0.17,0);sk.rotation.x=Math.PI/2;});}
  /* Yük bırakma mekanizması: servo + horn + kancalar + kapsüller */
+ TAG='mech';
  const pz=fr.payZ;
- add(BX(0.05,0.03,0.03),MAT.servo,0,-0.04,pz);
- const horn=new THREE.Group();horn.position.set(0.03,-0.04,pz);g.add(horn);add(BX(0.04,0.008,0.012),MAT.horn,0.02,0,0,horn);out.horn=horn;
+ const my=c.frame==='fixedwing'?-0.065:-0.04,cy0=c.frame==='fixedwing'?-0.115:-0.085;
+ add(BX(0.05,0.03,0.03),MAT.servo,0,my,pz);
+ const horn=new THREE.Group();horn.position.set(0.03,my,pz);g.add(horn);unit(horn,'mech');add(BX(0.04,0.008,0.012),MAT.horn,0.02,0,0,horn);out.horn=horn;
  const cd=capDims(),sp_=cd.len+2*cd.r+0.012;
  for(let i=0;i<c.payN;i++){
   const zi=pz+(i-(c.payN-1)/2)*sp_;
-  const cap=mkCapsule(cd.r,cd.len);cap.position.set(0,-0.085,zi);g.add(cap);out.caps.push(cap);
-  const hk=new THREE.Group();hk.position.set(-cd.r*0.8,-0.085-cd.r-0.003,zi);g.add(hk);add(BX(cd.r*1.6,0.006,0.02),MAT.hook,cd.r*0.8,0,0,hk);out.hooks.push(hk);
+  const cap=mkCapsule(cd.r,cd.len);cap.position.set(0,cy0,zi);g.add(cap);out.caps.push(cap);unit(cap,'payload');
+  const hk=new THREE.Group();hk.position.set(-cd.r*0.8,cy0-cd.r-0.003,zi);g.add(hk);unit(hk,'mech');add(BX(cd.r*1.6,0.006,0.02),MAT.hook,cd.r*0.8,0,0,hk);out.hooks.push(hk);
  }
  if(c.frame==='hframe'&&c.payN>0){
   const tot=c.payN*sp_,hx=cd.r+0.014;
@@ -1179,7 +1457,7 @@ function buildDrone(c,sp){
   [-1,1].forEach(sg=>add(BX(0.022,0.03,0.014),MAT.servoB,sg*(hx+0.016),-0.04,pz));
  }
  /* Ağırlık merkezi işareti */
- const cgm=new THREE.Mesh(new THREE.SphereGeometry(0.018,12,10),MAT.cg);cgm.position.set(0,0.0,sp?sp.cgZ:0);cgm.renderOrder=5;g.add(cgm);out.cg=cgm;
+ const cgm=new THREE.Mesh(new THREE.SphereGeometry(0.018,12,10),MAT.cg);cgm.position.set(0,0.0,sp?sp.cgZ:0);cgm.renderOrder=5;g.add(cgm);out.cg=cgm;unit(cgm,'cg');
  return out;
 }
 function setDroneVis(d,dt,spinOmega,pushOmega,servoDeg,payReleased,dirs){
@@ -1304,19 +1582,221 @@ function applyOrbit(cam,o,cx,cy,cz){
  cam.position.set(cx+o.r*Math.cos(o.el)*Math.sin(o.az),cy+o.r*Math.sin(o.el),cz+o.r*Math.cos(o.el)*Math.cos(o.az));cam.lookAt(cx,cy,cz);
 }
 let lastInteract=0;
+/* ============ MONTAJ SİHİRBAZI (Hangar): parçayı görselden seç → montaja ekle ============ */
+const ASM={on:false,k:0,picked:false,hi:0,t:1,dirty:false,tok:0};
+const ASM_STEPS=[
+ {part:'frame',title:'Gövde',groups:[{k:'frame',label:'Gövde tipi'}]},
+ {part:'motor',title:'Motor',groups:[{k:'motor',label:'Motor'}]},
+ {part:'esc',title:'ESC',groups:[{k:'esc',label:'ESC'}]},
+ {part:'fc',title:'Uçuş kontrolcüsü',groups:[{k:'fc',label:'Uçuş kontrolcüsü'}]},
+ {part:'gps',title:'GPS & Pusula',groups:[{k:'gps',label:'GPS'}]},
+ {part:'mech',title:'Servo + mekanizma',groups:[]},
+ {part:'batt',title:'Batarya',groups:[{k:'bat',label:'Batarya'}]},
+ {part:'prop',title:'Pervane',groups:[{k:'prop',label:'Pervane'}]},
+ {part:'payload',title:'Yük',groups:[{k:'payN',label:'Yük adedi',opts:[0,1,2,3]},{k:'payG',label:'Birim yük',opts:[100,250,500,1000]}]}
+];
+const ASM_TBL={frame:FRAMES,motor:MOTORS,esc:ESCS,fc:FCS,gps:GPSS,bat:BATS,prop:PROPS};
+function asmOpts(g){return g.opts||Object.keys(ASM_TBL[g.k]);}
+function optLabel(gk,v){
+ if(gk==='payN')return{n:v+' adet',s:v?(v*cfg.payG)+' g toplam':'Yüksüz'};
+ if(gk==='payG')return{n:v+' g',s:'birim yük'};
+ const e=ASM_TBL[gk][v];
+ if(gk==='frame')return{n:e.name,s:e.mass+' g · '+(e.fixed?'1 motor · sabit kanat':e.nLift+(e.pusher?'+1':'')+' motor')};
+ const sel=SELS.find(x=>x.k===gk);
+ return{n:e.name,s:sel?sel.info(e):''};
+}
+function asmInfo(part,sp){
+ const n=sp.nM,m=i=>sp.parts[i][1];
+ switch(part){
+  case 'frame':return{t:'Gövde',d:FRAMES[cfg.frame].name+(FRAMES[cfg.frame].fixed?': gövde, kanatlar, kuyruk ve iniş takımı':': karbon kollar, plakalar ve iniş ayakları'),g:m(0)};
+  case 'motor':return{t:'Motorlar',d:n+'× '+sp.mo.name,g:m(1)};
+  case 'esc':return{t:'ESC',d:n+'× '+sp.es.name,g:m(3)};
+  case 'fc':return{t:'Uçuş kontrolcüsü',d:sp.fc.name+' + güç dağıtım ve kablolama',g:m(4)+m(8)};
+  case 'gps':return{t:'GPS & Pusula',d:sp.gp.name,g:m(5)};
+  case 'mech':return{t:'Servo + mekanizma',d:'Servo, horn ve yük kancaları',g:m(7)};
+  case 'batt':return{t:'Batarya',d:sp.ba.name,g:m(6)};
+  case 'prop':return{t:'Pervaneler',d:n+'× '+sp.pr.name,g:m(2)};
+  default:return{t:'Yük',d:cfg.payN+'× '+cfg.payG+' g kapsül',g:m(9)};
+ }
+}
+/* --- küçük 3B resimler: ana renderer'ı geçici olarak bir render hedefine yönlendirir --- */
+const THUMB={rt:null,cam:null,cache:{},cu:null};
+const TB={
+ frame:k=>{const c=Object.assign({},cfg,{frame:k,payN:0}),d=buildDrone(c,null);
+  d.units.forEach(u=>{if(u.userData.part!=='frame')u.visible=false;});
+  return{obj:d.group,rad:Math.max(d.L.R,k==='hybrid'?0.67:0)+0.12,cy:-0.03};},
+ motor:k=>{const m=MOTORS[k],r=m.d/2000+0.006,g=new THREE.Group(),M=(geo,mat,y)=>{const o=new THREE.Mesh(geo,mat);o.position.y=y;g.add(o);};
+  M(new THREE.CylinderGeometry(r,r,0.035,24),MAT.motor,0);M(new THREE.CylinderGeometry(r*0.8,r*0.8,0.01,24),MAT.alu,0.022);
+  M(new THREE.CylinderGeometry(r*0.7,r*0.7,0.012,24),THUMB.cu,-0.022);M(new THREE.CylinderGeometry(0.004,0.004,0.02,10),MAT.alu,0.035);
+  return{obj:g,rad:0.055};},
+ prop:k=>{const p=PROPS[k],D=p.D*0.0254,g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(D,0.004,Math.max(0.018,D*0.075)),MAT.propB));
+  const h=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.012,12),MAT.alu);h.position.y=0.006;g.add(h);
+  return{obj:g,rad:0.22};},
+ esc:k=>{const e=ESCS[k],w=0.03+e.rating*0.0004,g=new THREE.Group(),B=(x,y,z,mat,px,py,pz)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(x,y,z),mat);o.position.set(px,py,pz);g.add(o);};
+  B(w,0.006,0.05,MAT.esc,0,0,0);B(w*0.9,0.008,0.035,MAT.servoB,0,0.007,0.002);
+  const cp=new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.014,12),MAT.alu);cp.position.set(w*0.3,0.01,-0.02);g.add(cp);
+  [-1,0,1].forEach(i=>B(0.005,0.004,0.025,i?MAT.hook:MAT.esc,i*0.008,0.001,0.036));
+  return{obj:g,rad:0.06};},
+ fc:k=>{const f=FCS[k],sz=0.04+f.mass*0.0005,g=new THREE.Group();
+  const bd=new THREE.Mesh(new THREE.BoxGeometry(sz,0.01,sz*0.8),MAT.fc);g.add(bd);
+  const ch=new THREE.Mesh(new THREE.BoxGeometry(sz*0.35,0.006,sz*0.3),MAT.alu);ch.position.y=0.008;g.add(ch);
+  const us=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.006,0.01),MAT.alu);us.position.set(sz*0.35,0.008,sz*0.4);g.add(us);
+  const ld=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.004,8),MAT.led);ld.position.set(-sz*0.3,0.007,sz*0.3);g.add(ld);
+  return{obj:g,rad:0.075};},
+ gps:k=>{if(k==='none')return null;const r=0.02+GPSS[k].mass*0.0004,g=new THREE.Group();
+  const pk=new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.012,28),MAT.puck);g.add(pk);
+  const tp=new THREE.Mesh(new THREE.CylinderGeometry(r*0.86,r*0.86,0.004,28),k==='here3'?MAT.horn:MAT.led);tp.position.y=0.008;g.add(tp);
+  const ms=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.05,8),MAT.alu);ms.position.y=-0.03;g.add(ms);
+  return{obj:g,rad:0.065,cy:-0.01};},
+ bat:k=>{const b=BATS[k],bl=0.09+b.cap/1000*0.011,bw=0.04+0.002*b.cells,bh=0.03+b.cap/1000*0.004,g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bl),MAT.batt));
+  const lb=new THREE.Mesh(new THREE.BoxGeometry(bw+0.002,bh*0.25,bl*0.5),MAT.white);g.add(lb);
+  const xt=new THREE.Mesh(new THREE.BoxGeometry(0.016,0.012,0.02),MAT.horn);xt.position.set(0,0,-bl/2-0.01);g.add(xt);
+  return{obj:g,rad:0.17};},
+ mech:()=>{const g=new THREE.Group(),B=(x,y,z,mat,px,py,pz)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(x,y,z),mat);o.position.set(px,py,pz);g.add(o);};
+  B(0.05,0.03,0.03,MAT.servoB,0,0,0);B(0.04,0.008,0.012,MAT.horn,0.03,0.02,0);B(0.03,0.006,0.02,MAT.hook,-0.02,-0.04,0);
+  return{obj:g,rad:0.075};},
+ payN:n=>{n=+n;if(!n)return null;const r=0.02+0.01*Math.sqrt(cfg.payG/250),len=0.06+0.00004*cfg.payG,g=new THREE.Group();
+  for(let i=0;i<n;i++){const c=mkCapsule(r,len);c.position.x=(i-(n-1)/2)*(2*r+0.015);g.add(c);}
+  return{obj:g,rad:0.07+0.03*n};},
+ payG:v=>{v=+v;const r=0.02+0.01*Math.sqrt(v/250),len=0.06+0.00004*v,g=new THREE.Group();g.add(mkCapsule(r,len));return{obj:g,rad:0.1};}
+};
+function makeThumb(type,val){
+ const ctx=type==='frame'?cfg.prop+'|'+(cfg.hfL||0)+'|'+(cfg.hfW||0):(type==='payN'?cfg.payG:'');
+ const id=type+':'+val+':'+ctx;
+ if(id in THUMB.cache)return THUMB.cache[id];
+ let url=null;
+ if(THREE_OK&&R3&&TB[type]){
+  try{
+   const W=144,H=108;
+   if(!THUMB.rt){THUMB.rt=new THREE.WebGLRenderTarget(W,H);THUMB.cam=new THREE.PerspectiveCamera(32,W/H,0.01,30);THUMB.cu=mkMat(0xb87333,.4,.6);}
+   const r=TB[type](val);
+   if(r){
+    const sc=new THREE.Scene();sc.background=new THREE.Color(0x0d1620);
+    sc.add(new THREE.HemisphereLight(0xdfeaff,0x203040,1.1));const dl=new THREE.DirectionalLight(0xffffff,0.9);dl.position.set(1,2,1.5);sc.add(dl);sc.add(r.obj);
+    const cam=THUMB.cam,dist=r.rad*3.4,el=0.85,az=0.6;
+    cam.position.set(dist*Math.cos(el)*Math.sin(az),dist*Math.sin(el)+(r.cy||0),dist*Math.cos(el)*Math.cos(az));cam.lookAt(0,r.cy||0,0);
+    const prev=R3.getRenderTarget();R3.setRenderTarget(THUMB.rt);R3.render(sc,cam);
+    const buf=new Uint8Array(W*H*4);R3.readRenderTargetPixels(THUMB.rt,0,0,W,H,buf);R3.setRenderTarget(prev);
+    const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g2=cv.getContext('2d'),img=g2.createImageData(W,H);
+    for(let y=0;y<H;y++)img.data.set(buf.subarray((H-1-y)*W*4,(H-y)*W*4),y*W*4);
+    g2.putImageData(img,0,0);url=cv.toDataURL();
+    sc.traverse(n=>{if(n.geometry)n.geometry.dispose();});
+   }
+  }catch(e){try{R3.setRenderTarget(null);}catch(_){}url=null;}
+ }
+ THUMB.cache[id]=url;return url;
+}
+function asmFillThumbs(){
+ const tok=++ASM.tok,els=[...document.querySelectorAll('#asmCard .th[data-tb]')];let i=0;
+ const nx=()=>{if(tok!==ASM.tok||i>=els.length)return;const el=els[i++],pr=el.dataset.tb.split('|'),u=makeThumb(pr[0],pr[1]);
+  if(u)el.style.backgroundImage='url('+u+')';else if(pr[1]==='none'||pr[1]==='0')el.textContent='∅';
+  setTimeout(nx,0);};
+ setTimeout(nx,0);
+}
+function asmHi(){ASM.hi=Math.max(ASM.hi,ASM.k+(ASM.picked?1:0));}
+function renderAsm(){
+ const bar=$('asmBar'),card=$('asmCard'),btn=$('asmBtn'),N=ASM_STEPS.length;
+ if(btn)btn.classList.toggle('on',ASM.on);
+ if(bar)bar.style.display=(ASM.on&&tab==='hangar')?'block':'none';
+ if(card)card.style.display=ASM.on?'block':'none';
+ if(!ASM.on||!bar||!card)return;
+ const sp=computeSpecs(cfg),k=ASM.k,done=k>=N;
+ let title,desc;
+ if(done){title='Montaj tamam';desc=f1(sp.mass,0)+' g · TWR '+f1(sp.twr,2)+' · uçuş (hover) '+f1(sp.hoverMin,1)+' dk';}
+ else{const st=ASM_STEPS[k];title='Adım '+(k+1)+'/'+N+' · '+st.title;
+  if(ASM.picked){const it=asmInfo(st.part,sp);desc=it.d+' · +'+f1(it.g,0)+' g';}else desc=st.groups.length?'Aşağıdan seçip montaja ekleyin':'Mekanizmayı eklemek için ▶ Ekle\'ye basın';}
+ const mainLbl=done?'':(ASM.picked?'Sonraki ▶':(ASM.picked===false&&ASM_STEPS[k].groups.length?'Mevcudu ekle':'Ekle ▶'));
+ bar.innerHTML='<div class="t">'+title+'</div><div class="d">'+desc+'</div><div class="r"><button class="btn" data-act="asmfirst">⏮</button><button class="btn" data-act="asmprev">◀</button>'+(done?'':'<button class="btn ok" style="flex:2" data-act="asmnext">'+mainLbl+'</button>')+'<button class="btn" data-act="asmall">⏭</button></div>';
+ let h='<h3>Montaj sihirbazı</h3><div class="row" style="gap:4px;margin-bottom:6px">'+ASM_STEPS.map((st,i)=>'<button class="btn'+(i===k?' on':(i<ASM.hi||done?' ok':''))+'" style="padding:4px 9px" data-asmj="'+i+'">'+(i+1)+'</button>').join('')+'</div>';
+ if(done){
+  h+='<div class="kpis"><div><span>Toplam kütle</span><b>'+f1(sp.mass,0)+' g</b></div><div><span>TWR</span><b class="'+(sp.twr<1?'bad':(sp.twr<1.3?'warn':'ok'))+'">'+f1(sp.twr,2)+'</b></div><div><span>Hover</span><b>'+f1(sp.hoverMin,1)+' dk</b></div></div><div class="bom">';
+  ASM_STEPS.forEach(st=>{const it=asmInfo(st.part,sp);h+='<div>'+it.t+'<br><span>'+it.d+'</span></div><b>'+f1(it.g,0)+' g</b>';});
+  h+='</div><div class="wl">'+sp.warns.map(w=>'<div class="'+w.t+'">'+w.m+'</div>').join('')+'</div><button class="btn" style="width:100%;margin-top:8px" data-act="asm">Montajı kapat</button>';
+ }else{
+  const st=ASM_STEPS[k];
+  h+='<div class="info" style="margin:0 0 6px"><b style="color:var(--tx)">Adım '+(k+1)+'/'+N+' — '+st.title+'.</b> Bir seçeneğe dokununca parça modele yukarıdan iner; başka birine dokunarak değiştirebilirsiniz.</div>';
+  if(!st.groups.length){
+   h+='<div class="optgrid"><button class="opt'+(ASM.picked?' sel':' cur')+'" data-asmpick="mech|1"><div class="th" data-tb="mech|1"></div><b>Servo + kancalı bırakma mekanizması</b><span>'+f1(asmInfo('mech',sp).g,0)+' g · 0°/90° servo</span></button></div>';
+  }else st.groups.forEach(g=>{
+   h+=(st.groups.length>1?'<div class="info" style="margin:4px 0 0">'+g.label+'</div>':'')+'<div class="optgrid">';
+   asmOpts(g).forEach(v=>{const lb=optLabel(g.k,v),on=String(cfg[g.k])===String(v);
+    h+='<button class="opt'+(on?(ASM.picked?' sel':' cur'):'')+'" data-asmpick="'+g.k+'|'+v+'"><div class="th" data-tb="'+g.k+'|'+v+'"></div><b>'+lb.n+'</b><span>'+lb.s+'</span></button>';});
+   h+='</div>';});
+ }
+ card.innerHTML=h;
+ asmFillThumbs();
+}
+function asmToggle(){
+ ASM.on=!ASM.on;ASM.dirty=true;
+ if(ASM.on){orbH.el=1.2;orbH.az=0.3;ASM.k=0;ASM.picked=false;ASM.hi=0;ASM.t=1;}
+ renderAsm();
+}
+function asmPick(str){
+ const pr=str.split('|'),gk=pr[0],v=pr[1];
+ if(gk!=='mech')cfg[gk]=(gk==='payN'||gk==='payG')?+v:v;
+ ASM.picked=true;ASM.t=0;asmHi();SND.ev('servo');
+ if(gk==='mech')renderAsm();else onCfgChange();
+}
+function asmNext(){
+ const N=ASM_STEPS.length;
+ if(ASM.k>=N)return;
+ if(!ASM.picked){ASM.picked=true;ASM.t=0;asmHi();SND.ev('servo');}
+ else{ASM.k++;ASM.picked=false;ASM.t=1;}
+ renderAsm();
+}
+function asmBack(){
+ const N=ASM_STEPS.length;
+ if(ASM.k>=N){ASM.k=N-1;ASM.picked=true;}
+ else if(ASM.k>0){ASM.k--;ASM.picked=true;}
+ else ASM.picked=false;
+ ASM.t=1;renderAsm();
+}
+function asmFirst(){ASM.k=0;ASM.picked=false;ASM.hi=0;ASM.t=1;renderAsm();}
+function asmAll(){ASM.k=ASM_STEPS.length;ASM.picked=true;ASM.hi=ASM.k;ASM.t=1;renderAsm();}
+function asmJump(i){ASM.k=clamp(i,0,ASM_STEPS.length-1);ASM.picked=i<ASM.hi;ASM.t=1;renderAsm();}
+function applyAssembly(d,dt){
+ const U=d.units;if(!U)return;
+ if(!ASM.on){
+  if(ASM.dirty){U.forEach(u=>{u.position.copy(u.userData.bp);u.visible=u.userData.part==='cg'?showCG:true;});ASM.dirty=false;}
+  return;
+ }
+ const N=ASM_STEPS.length;ASM.t=Math.min(1,ASM.t+dt/1.3);
+ const idx={},cnt={},seen={};ASM_STEPS.forEach((st,i)=>{idx[st.part]=i;});
+ U.forEach(u=>{const p=u.userData.part;cnt[p]=(cnt[p]||0)+1;});
+ const q=new THREE.Quaternion(),v=new THREE.Vector3();
+ U.forEach(u=>{
+  const p=u.userData.part;
+  if(p==='cg'){u.visible=showCG&&ASM.k>=N;return;}
+  const i=idx[p];
+  if(!(i<ASM.k||(i===ASM.k&&ASM.picked))){u.visible=false;return;}
+  let off=0;
+  if(i===ASM.k&&ASM.picked&&ASM.t<1){
+   const si=seen[p]||0;seen[p]=si+1;
+   const st=cnt[p]>1?si/(cnt[p]-1)*0.5:0,lt=clamp((ASM.t-st)/0.5,0,1);
+   if(lt<=0){u.visible=false;return;}
+   off=Math.pow(1-lt,3)*0.4;
+  }
+  u.position.copy(u.userData.bp);
+  if(off>0&&u.parent){u.parent.getWorldQuaternion(q).invert();v.set(0,off,0).applyQuaternion(q);u.position.add(v);}
+  u.visible=true;
+ });
+}
 function syncHangar(dt){
  const d=HG.drone;if(!d)return;
- if(performance.now()-lastInteract>3500)orbH.az+=dt*0.25;
+ if(!ASM.on&&performance.now()-lastInteract>3500)orbH.az+=dt*0.25;
  hangarServo+=clamp(hangarServoCmd-hangarServo,-400*dt,400*dt);
  setDroneVis(d,dt,motorTest?70:0,motorTest?70:0,hangarServo,0);
  d.cg.visible=showCG;
+ applyAssembly(d,dt);
  applyOrbit(HG.cam,orbH,0,0.25,0);
 }
 function syncWorld(dt){
  const d=WD.drone,cam=WD.cam;if(!d)return;
  const gy=S.pos.y+GEAR;
  d.group.position.set(S.pos.x,gy,S.pos.z);d.group.rotation.set(-S.pitch,-S.yaw,-S.roll,'YXZ');
- const spin=S.armed?(20+130*Math.sqrt(S.thrFrac)):0,push=S.armed&&SP.fr.pusher?(15+140*S.pushFrac):0;
+ const spin=S.armed?(20+130*Math.sqrt(S.thrFrac)):0,push=S.armed&&(SP.fr.pusher||SP.fr.fixed)?(15+140*S.pushFrac):0;
  setDroneVis(d,dt,spin,push,S.servo,cfg.payN-S.payLeft);
  const sa=Math.max(0,S.pos.y);WD.shadow.position.set(S.pos.x,0.08,S.pos.z);const ss=1+sa*0.04;WD.shadow.scale.set(ss,ss,ss);WD.shadow.material.opacity=clamp(0.45-sa*0.01,0.08,0.45);
  for(const b of bodies){if(b.mesh)b.mesh.position.set(b.x,b.y,b.z);}
@@ -1679,18 +2159,18 @@ function syncHangarUI(){
  }
 }
 function renderSpec(){
- const sp=computeSpecs(cfg),tw=sp.twr,cls=tw<1?'bad':(tw<1.3?'warn':'ok'),maxP=Math.max(...sp.parts.map(p=>p[1]),1);
+ const sp=computeSpecs(cfg),tw=sp.twr,fx=!!sp.fr.fixed,cls=fx?(tw<0.25?'bad':(tw<0.45?'warn':'ok')):(tw<1?'bad':(tw<1.3?'warn':'ok')),maxP=Math.max(...sp.parts.map(p=>p[1]),1);
  let h=`<h3>Performans & telemetri</h3><div class="kpis">
  <div><span>Toplam kütle</span><b>${f1(sp.mass,0)} g</b></div><div><span>TWR</span><b class="${cls}">${f1(tw,2)}</b></div><div><span>Maks itki</span><b>${f1(sp.Tlift/G,2)} kg</b></div>
- <div><span>Hover gücü</span><b>${f1(sp.hoverP,0)} W</b></div><div><span>Uçuş (hover)</span><b>${f1(sp.hoverMin,1)} dk</b></div><div><span>Seyir 10 m/s</span><b>${f1(sp.cruiseMin,1)} dk</b></div>
- <div><span>Motor başı</span><b>${f1(sp.Tm/G,2)} kg</b></div><div><span>Akım / motor</span><b>${f1(sp.mm.I,0)} A</b></div><div><span>Verim (hover)</span><b>${f1(sp.eff,1)} g/W</b></div>
+ <div><span>${fx?'Seyir gücü':'Hover gücü'}</span><b>${f1(fx?sp.cruiseP:sp.hoverP,0)} W</b></div><div><span>${fx?'Uçuş (seyir)':'Uçuş (hover)'}</span><b>${f1(fx?sp.cruiseMin:sp.hoverMin,1)} dk</b></div><div><span>${fx?'Stall / Vmaks':'Seyir 10 m/s'}</span><b>${fx?f1(sp.Vs,1)+' / '+f1(sp.Vmax,0)+' m/s':f1(sp.cruiseMin,1)+' dk'}</b></div>
+ <div><span>Motor başı</span><b>${f1(sp.Tm/G,2)} kg</b></div><div><span>Akım / motor</span><b>${f1(sp.mm.I,0)} A</b></div><div><span>${fx?'Maks tırmanış':'Verim (hover)'}</span><b>${fx?f1(sp.climbMax,1)+' m/s':f1(sp.eff,1)+' g/W'}</b></div>
  <div><span>Batarya</span><b>${f1(sp.Wh,0)} Wh</b></div><div><span>ESC yükü</span><b class="${sp.escLoad>100?'bad':(sp.escLoad>85?'warn':'ok')}">%${f1(sp.escLoad,0)}</b></div><div><span>Ağırlık merk.</span><b>${f1(sp.cgZ*1000,0)} mm</b></div></div>`;
  h+=`<div class="wl">`+sp.warns.map(w=>`<div class="${w.t}">${w.m}</div>`).join('')+`</div><div style="margin-top:8px">`;
  h+=sp.parts.filter(p=>p[1]>0).map(p=>`<div class="pr"><span>${p[0]}</span><em style="width:${Math.max(3,p[1]/maxP*100)}%"></em><b>${f1(p[1],0)}</b></div>`).join('')+`</div>`;
  $('specCard').innerHTML=h;
 }
 function onCfgChange(){
- resetSim();syncHangarUI();renderSpec();rebuildHangarDrone();renderMissionInfo();saveState();
+ resetSim();syncHangarUI();renderSpec();rebuildHangarDrone();renderMissionInfo();saveState();if(ASM.on)renderAsm();
 }
 function wpExtra(w){
  const a=w.action;
@@ -1746,11 +2226,11 @@ function updateHUD(){
  else if(wp)wpTxt=`→WP${S.wpIdx+1}`;
  const bcls=S.pct<10?'bad':(S.pct<22?'warn':'');
  setTxt('h_alt',f1(S.est.y));setTxt('h_spd',f1(gs));setTxt('h_vs',f1(S.vel.y));setTxt('h_bat',f1(S.pct,0)+'% '+f1(S.volt,1)+'V');setCls('h_bat',bcls);
- setTxt('h_twr',f1(twr,2));setCls('h_twr',twr<1?'bad':(twr<1.3?'warn':''));setTxt('h_mass',f1(SP.mass,0));
+ const fxw=!!SP.fr.fixed,air=S.armed&&!S.onGround;setTxt('h_twrL',fxw?'HAVA HIZI':'TWR');setTxt('h_twr',fxw?f1(S.V,1):f1(twr,2));setCls('h_twr',fxw?(air&&S.V<1.12*SP.Vs?'bad':(air&&S.V<1.25*SP.Vs?'warn':'')):(twr<1?'bad':(twr<1.3?'warn':'')));setTxt('h_mass',f1(SP.mass,0));
  setTxt('h_servo',f1(S.servo,0)+'° '+(S.servo>45?'AÇIK':'KAPALI'));setTxt('h_wp',wpTxt);
  setTxt('t_alt',f1(S.est.y)+' m');setTxt('t_gs',f1(gs)+' m/s');setTxt('t_vs',f1(S.vel.y)+' m/s');
  setTxt('t_bat',f1(S.pct,0)+' %');setCls('t_bat',bcls);setTxt('t_volt',f1(S.volt,1)+' V');setTxt('t_pw',f1(S.curr,0)+'A '+f1(S.pwr,0)+'W');
- setTxt('t_twr',f1(twr,2));setTxt('t_mass',f1(SP.mass,0)+' g');setTxt('t_servo',f1(S.servo,0)+'°');setTxt('t_wp',wpTxt);
+ setTxt('t_twrL',fxw?'HAVA HIZI':'TWR (anlık)');setTxt('t_twr',fxw?f1(S.V,1)+' m/s':f1(twr,2));setTxt('t_mass',f1(SP.mass,0)+' g');setTxt('t_servo',f1(S.servo,0)+'°');setTxt('t_wp',wpTxt);
  setTxt('t_mode',S.mode);setTxt('t_state',stTxt);
  setTxt('t_gps',cfg.gps==='none'?'YOK':(S.gpsOK?`3D FIX ${S.sats}`:`ARANIYOR ${S.sats}`));
  setTxt('t_pay',`${S.payLeft}/${cfg.payN} · ${cfg.payG} g`);
@@ -1761,7 +2241,7 @@ function updateHUD(){
  const ar=S.armed?'DISARM':'ARM';setTxt('q_arm',ar);setTxt('f_arm',ar+' (T)');
  const mt=S.mode==='AUTO'?'MANUEL':'AUTO';setTxt('q_mode',mt);setTxt('f_mode',mt+' (M)');
  setTxt('f_loit',S.loiter?'LOITER: AÇIK (L)':'LOITER: KAPALI (L)');
- setTxt('vpHint',tab==='flight'&&!S.armed&&!S.crashed?'T: ARM  ·  M: AUTO  ·  Space: yüksel':'');
+ setTxt('vpHint',tab==='flight'&&!S.armed&&!S.crashed?(SP.fr.fixed?'T: ARM  ·  Space: gaz+  ·  Shift: gaz−  ·  M: AUTO':'T: ARM  ·  M: AUTO  ·  Space: yüksel'):'');
  if(logDirty)renderLog();
 }
 function drawADI(){
@@ -1809,6 +2289,7 @@ const ACT={
  servo90:()=>{if(S.armed&&S.payLeft-S.relQ.length>0)releasePayload(false);else{S.servoCmd=90;S.servoT=1.3;}log('SERVO → 90°','warn');},
  clearwp:()=>{M.wps=[];onMissionChange();},demo:()=>{demoMission();onMissionChange();MV.map.fit();},cleartarget:()=>{M.target=null;onMissionChange();},
  gofly:()=>setTab('flight'),
+ asm:asmToggle,asmnext:asmNext,asmprev:asmBack,asmfirst:asmFirst,asmall:asmAll,
  hfauto:()=>{cfg.hfL=null;cfg.hfW=null;onCfgChange();},
  sound:()=>{SND.init();SND.setOn(!SND.on);}
 };
@@ -1823,7 +2304,7 @@ function setTab(t){
  if(t==='hangar')renderSpec();
  if(t==='world'){initWorldMap();updateWorldUI();renderWorldInfo();setTimeout(()=>{if(LM)LM.invalidateSize();},60);}
  if(t==='flight'){if(THREE_OK&&WD.cam)setCam(camMode);log_once();}
- resizeAll();
+ resizeAll();renderAsm();
 }
 let logged=false;function log_once(){if(!logged){logged=true;log('Hazır. T: ARM, M/GÖREVİ BAŞLAT: otonom, Space/WASD: manuel','info');}}
 function resizeAll(){
@@ -1836,6 +2317,8 @@ function bindUI(){
  document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');if(a&&ACT[a.dataset.act]){ACT[a.dataset.act](a);return;}
   const mp=e.target.closest('[data-map]');if(mp){mapMode=mp.dataset.map;document.querySelectorAll('[data-map]').forEach(b=>b.classList.toggle('on',b===mp));return;}
+  const ap=e.target.closest('[data-asmpick]');if(ap){asmPick(ap.dataset.asmpick);return;}
+  const aj=e.target.closest('[data-asmj]');if(aj){asmJump(+aj.dataset.asmj);return;}
   const cm=e.target.closest('[data-cam]');if(cm){setCam(cm.dataset.cam);return;}
   const fr=e.target.closest('[data-frame]');if(fr){cfg.frame=fr.dataset.frame;onCfgChange();return;}
   const pr=e.target.closest('[data-pre]');if(pr){Object.assign(cfg,PRESETS[pr.dataset.pre].cfg);cfg.hfL=null;cfg.hfW=null;onCfgChange();return;}
